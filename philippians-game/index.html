@@ -174,7 +174,7 @@ const S={
   spirit:0, sick:0, unlocked:false, waiting:false,
   fruit:Object.fromEntries(FRUITS.map(f=>[f,0])),
   roots:0, obey:0, flesh:0, waitSec:0,
-  burdens:[], dropped:0, thoughts:new Set(), fought:0
+  burdens:[], dropped:0, thoughts:new Set(), fought:0, virtues:[], rotted:[]
 };
 const C={lamp:'#f2c14e',leaf:'#86ad6f',germ:'#b95fa3',fever:'#e0645a',text:'#ebe5d6',muted:'#a6a99f',earth:'#6b5a45',night:'#111726',night2:'#1a2235',line:'#34405a'};
 const $=s=>document.querySelector(s);
@@ -369,7 +369,8 @@ function journey(mode,idx,next){
     setAct(L.name,L.sub);
     const K=makeCanvas(), {ctx}=K;
     const germs=[], pops=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
-    let dist=0, t=0, spawn=0, py=K.H*.55, ty=py, flash=0, done=false, cool=0;
+    let dist=0, t=0, spawn=0, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
+    const orbs=back?S.virtues.filter(v=>!v.rotten):[];
     $('#fightBtn').hidden=false;
     $('#keys').innerHTML=back
       ?'拖动/↑↓ 躲避病菌 · 长按「等候」举起平安的盾'
@@ -415,13 +416,21 @@ function journey(mode,idx,next){
         g.x+=g.vx*dt; g.vy*=.95; g.y+=(g.vy+Math.sin(t*g.w+g.ph)*18)*dt; g.ph+=dt*.6;
         const d=Math.hypot(g.x-px,g.y-py);
         if(shield && d<g.r+40){ germs.splice(i,1); S.spirit=clamp(S.spirit-7,0,100); pop(pops,g.x,g.y,'平安保守',C.lamp); continue; }
+        const o=orbs.find(o=>!o.rotten&&Math.hypot(g.x-o.x,g.y-o.y)<g.r+13);
+        if(o){ germs.splice(i,1); o.hp--;
+          if(o.hp<=0){ o.rotten=true; const bad=VIRTUE[o.name].rot; S.rotted.push(o.name);
+            pop(pops,o.x,o.y-16,`「${o.name}」腐败成了「${bad}」`,C.germ);
+            if(S.rotted.length===1) toast('靠人持守的美德，也会被病菌感染。有人的地方，就有病菌。',3600);
+            germs.push({x:W+30,y:rnd(50,H-40),r:22,label:bad,vx:-rnd(70,110)-speed*.6,vy:0,ph:0,w:1.5}); }
+          else pop(pops,o.x,o.y-16,`「${o.name}」挡住了，却也染上了`,'#e2a6d2');
+          continue; }
         if(d<g.r+14){ germs.splice(i,1); S.sick=clamp(S.sick+(back?7:9),0,100); flash=.35; pop(pops,px,py-34,'染上「'+g.label+'」',C.fever); continue; }
         if(g.x<-40) germs.splice(i,1);
       }
       // 结局判定
       if(S.sick>=100){
         if(!back){ done=true; return next('collapse'); }
-        S.sick=45; toast('你倒下了……然而神怜恤你，又把你扶起来。',3000);
+        S.sick=95; if(!capped){ capped=true; toast('病菌还在你身上，可是你还走得动。',3000); }
       }
       if(dist>=L.dist){ done=true; return next(); }
 
@@ -449,6 +458,11 @@ function journey(mode,idx,next){
       if(shield){ ctx.save(); ctx.globalAlpha=.25+S.spirit/300; ctx.strokeStyle=C.lamp; ctx.fillStyle='rgba(242,193,78,.12)'; ctx.lineWidth=2.5;
         ctx.beginPath(); ctx.arc(px,py-4,40,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
         ctx.fillStyle=C.lamp; ctx.font='12px '+FONT; ctx.textAlign='center'; ctx.fillText('平安',px,py-48); }
+      orbs.forEach((o,i)=>{ if(o.rotten) return; const a=t*1.1+i/orbs.length*Math.PI*2;
+        o.x=px+Math.cos(a)*62; o.y=py-4+Math.sin(a)*52;
+        ctx.fillStyle=o.hp>1?'rgba(242,193,78,.2)':'rgba(185,95,163,.3)'; ctx.strokeStyle=o.hp>1?C.lamp:C.germ;
+        ctx.beginPath(); ctx.arc(o.x,o.y,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=o.hp>1?C.lamp:'#e2a6d2'; ctx.font='11px '+FONT; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.name.slice(0,2),o.x,o.y+1); ctx.textBaseline='alphabetic'; });
       drawTraveler(ctx,px,py,heavy,t,L.sea);
       if(flash>0){ flash-=dt; ctx.fillStyle=`rgba(224,100,90,${flash})`; ctx.fillRect(0,0,W,H); }
       drawPops(ctx,pops,dt);
@@ -690,6 +704,17 @@ const PACK=[
   {n:'自以为义',p:'就律法上的义说，我是无可指摘的',deep:true}
 ];
 const GOOD=['真实','可敬','公义','清洁','可爱','有美名','德行','称赞'];
+/* 4:8 原文：希腊文与字义；rot = 靠人持守时腐败成的样子 */
+const VIRTUE={
+  '真实':{gr:'ἀληθής',m:'真的、不虚假的，与实情相符',rot:'批判'},
+  '可敬':{gr:'σεμνός',m:'庄重，值得尊敬，带着敬畏神的分量',rot:'摆架子'},
+  '公义':{gr:'δίκαιος',m:'在神和人面前都正直',rot:'论断'},
+  '清洁':{gr:'ἁγνός',m:'纯净无染，与「圣」（ἅγιος）同一个字根。动机和身体都洁净，是分别为圣的洁净，不只是干净',rot:'定人的罪'},
+  '可爱':{gr:'προσφιλής',m:'新约只出现在这里一次。由「朝向」（πρός）和「爱」（φιλέω）组成，意思是叫人生出爱来的、让人愿意亲近的',rot:'讨好人'},
+  '有美名':{gr:'εὔφημος',m:'新约也只出现在这里。字面是「说得好」，指讲出来就造就人、值得传扬的事',rot:'虚荣'},
+  '德行':{gr:'ἀρετή',m:'卓越、美德。这是希腊哲人最爱用的字，保罗书信里只用这一次',rot:'骄傲'},
+  '称赞':{gr:'ἔπαινος',m:'值得称赞的，最终是蒙神称许（参 1:11）',rot:'求掌声'}
+};
 const BAD=['比较','自怜','别人怎么看我','想当年','抱怨','嫉妒'];
 function act3(){
   setAct('第三章 · 标竿','丢弃，然后直跑');
@@ -713,7 +738,7 @@ function runner(){
       packEl.innerHTML='<div class="label">背包里的「宝物」（被圣灵照出来的，才能丢弃）</div>'+pack.filter(x=>!x.gone).map((x,i)=>`<button class="item ${x.seen?'seen':''}" data-i="${pack.indexOf(x)}">${x.seen?x.n+'｜'+x.p:x.n}</button>`).join('');
       packEl.querySelectorAll('.item.seen').forEach(b=>b.onclick=()=>{
         const it=pack[+b.dataset.i]; it.gone=true; S.dropped++; S.obey++;
-        if(it.deep){ fruit('温柔',+1); fruit('节制',+1); toast('「不是有自己因律法而得的义，乃是有信基督的义。」腓立比书 3:9',4200); }
+        if(it.deep){ fruit('温柔',+1); fruit('节制',+1); toast('保罗丢得掉它，是因为他得着了更宝贵的：以认识基督耶稣为至宝。<br>「不是有自己因律法而得的义，乃是有信基督的义。」3:8-9',5200); }
         else toast(`丢弃「${it.n}」，看作粪土（3:8）`,1800);
         renderPack();
       });
@@ -755,7 +780,8 @@ function runner(){
         obs.push({lane:Math.floor(Math.random()*3),x:W+40,good,label:good?pick(GOOD):pick(BAD)}); }
       for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; o.x-=(speed+60)*dt;
         if(Math.abs(o.x-px)<22 && o.lane===lane){ obs.splice(i,1);
-          if(o.good){ const n=!S.thoughts.has(o.label); S.thoughts.add(o.label); pop(pops,px,laneY(lane)-34,(n?'✦ ':'')+o.label,C.lamp); }
+          if(o.good){ const n=!S.thoughts.has(o.label); S.thoughts.add(o.label); pop(pops,px,laneY(lane)-34,(n?'✦ ':'')+o.label,C.lamp);
+            if(n){ const v=VIRTUE[o.label]; toast(`<b>${o.label}</b> ${v.gr}<br><span style="font-size:13px">${v.m}</span>`,3400); } }
           else { stun=.9; S.sick=clamp(S.sick+4,0,100); pop(pops,px,laneY(lane)-34,o.label+'……绊了一下',C.germ); }
           continue; }
         if(o.x<-60) obs.splice(i,1); }
@@ -790,7 +816,8 @@ function finishRun(pack){
   const left=pack.filter(x=>!x.gone).map(x=>x.n);
   story({eyebrow:'第三章 · 完',title:'到了标竿',
     paras:[left.length?`你到了。但背包里还背着：${left.join('、')}。没关系，保罗也说「我不是以为自己已经得着了」。`:'你到了，背包是空的。你从来没有跑得这么轻。',
-      `一路上你接住了 ${S.thoughts.size}/8 样值得思念的事：${[...S.thoughts].join('、')||'（还没有）'}。`],
+      `一路上你接住了 ${S.thoughts.size}/8 样值得思念的事${S.thoughts.size?'。回家的路上，它们会陪在你身边':''}。`],
+    extra:[...S.thoughts].map(t=>`<p class="note"><b style="color:var(--lamp)">${t}</b> ${VIRTUE[t].gr}：${VIRTUE[t].m}</p>`).join(''),
     verses:[['弟兄们，我不是以为自己已经得着了；我只有一件事，就是忘记背后，努力面前的，向着标竿直跑，要得神在基督耶稣里从上面召我来得的奖赏。','腓立比书 3:13-14'],['凡是真实的、可敬的、公义的、清洁的、可爱的、有美名的，若有什么德行，若有什么称赞，这些事你们都要思念。','腓立比书 4:8']],
     btn:'第四章：回家',next:returnStart});
 }
@@ -799,8 +826,9 @@ function finishRun(pack){
 function returnStart(){
   setAct('第四章 · 回程','带着喜乐的信回家');
   S.burdens=['忧虑','敌对','不同心']; S.sick=Math.min(S.sick,15); hud();
+  S.virtues=[...S.thoughts].map(n=>({name:n,hp:2,rotten:false,x:0,y:0}));
   story({eyebrow:'第四章',title:'同一条路，不同的人',
-    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','这一次不一样了。在路上，<b>长按「等候」可以举起「平安」的盾</b>，病菌碰到就会消散；等候时病也会慢慢好转。每到一站，圣灵也会让你看见放下重担的路。'],
+    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','这一次你有两样东西可以抵挡病菌。一样是<b>平安</b>：长按「等候」就会举起盾牌，病菌碰到就消散，等候时病也会慢慢好转。另一样是你在第三章接住的<b>思念</b>（4:8），它们会围着你转，替你挡住病菌。'+(S.thoughts.size?'':'（你在第三章没有接住任何思念。）'),'可是要留心：思念是靠人持守的。它们挡住病菌，自己也会被感染，最后腐败掉。只有神所赐的平安不会腐败。'],
     verses:[['所以我越发急速打发他去，叫你们再见他就可以喜乐，我也可以少些忧愁。','腓立比书 2:28'],['神所赐出人意外的平安，必在基督耶稣里保守你们的心怀意念。','腓立比书 4:7']],
     extra:'<p class="note">「保守」原文是驻军守城的字：平安像卫兵一样，守着你的心。</p>',
     btn:'出发',next:back1});
@@ -826,48 +854,78 @@ function back3(){
     options:[
       {kind:'flesh',text:'先去找有理的那一位，告诉她保罗是站在她那边的。',fruit:'仁爱',reply:'你差点把一封和好的信，用成了结党的武器。'},
       {kind:'flesh',text:'当众宣读保罗的话，让她们两个下不了台。',fruit:'温柔',reply:'对的话，用错了方式。'},
-      {kind:'spirit',text:'分别去见她们，温柔地说：保罗劝我们在主里同心，我愿意陪你们一起走这一步。',fruit:'仁爱',burden:'-不同心',reply:'「不同心」这块石头放下了。你成了保罗说的「真实同负一轭的」。',verse:['我劝友阿爹和循都基要在主里同心。我也求你这真实同负一轭的，帮助这两个女人，因为她们在福音上曾与我一同劳苦。','腓立比书 4:2-3']}
+      {kind:'spirit',text:'分别去见她们，温柔地说：保罗劝我们在主里同心，我愿意陪你们一起走这一步。',fruit:'仁爱',burden:'-不同心',reply:'「不同心」这块石头放下了。你没有替她们解决问题，只是把她们交托给神，自己也愿意陪她们走。她们会不会同心，不在你手里。',verse:['我劝友阿爹和循都基要在主里同心。我也求你这真实同负一轭的，帮助这两个女人，因为她们在福音上曾与我一同劳苦。','腓立比书 4:2-3']}
     ],next:()=>journey('back',2,ending)});
 }
 
 /* ================= 结局 ================= */
+const LETTERS=['罗马书','哥林多前书','哥林多后书','加拉太书','以弗所书','腓立比书','歌罗西书','帖撒罗尼迦前书','帖撒罗尼迦后书','提摩太前书','提摩太后书','提多书','腓利门书'];
 function ending(){
-  setAct('腓立比','靠主常常喜乐');
-  if(!S.ended){ S.ended=true; S.burdens=[]; fruit('喜乐',+1); }
-  const total=FRUITS.reduce((a,f)=>a+Math.max(0,S.fruit[f]),0);
-  const ripe=FRUITS.filter(f=>S.fruit[f]>0).length;
-  const ratio=S.obey+S.flesh?Math.round(S.obey/(S.obey+S.flesh)*100):0;
+  setAct('腓立比','信还没有读完');
+  const alive=S.virtues.filter(v=>!v.rotten).map(v=>v.name);
+  const rotted=S.virtues.filter(v=>v.rotten).map(v=>`${v.name}→${VIRTUE[v.name].rot}`);
+  const N=t=>`<p class="story" style="font-family:var(--serif);font-size:16.5px;line-height:1.95">${t}</p>`;
+  const beats=[
+    N(`以巴弗提回到了腓立比。${S.sick>40?'他身上还带着病菌，走路还有点喘。':'他的病好了一些，身上却还带着路上的病菌。'}${rotted.length?`他带回来的思念，有些已经腐败了：${rotted.join('、')}。`:''}`),
+    N('主日，会众聚在一起。以巴弗提打开保罗的信，一句一句读出来。'),
+    V('我每逢想念你们，就感谢我的神……因为从头一天直到如今，你们是同心合意地兴旺福音。','腓立比书 1:3-5'),
+    V('你们就要意念相同，爱心相同，有一样的心思，有一样的意念，使我的喜乐可以满足。','腓立比书 2:2'),
+    N('读到第二章末了，有人抬起头看着以巴弗提。保罗在信里说，他病了，几乎要死。'),
+    V('故此，你们要在主里欢欢乐乐地接待他，而且要尊重这样的人。','腓立比书 2:29'),
+    N('然后，以巴弗提读到了两个名字。'),
+    V('我劝友阿爹和循都基要在主里同心。','腓立比书 4:2'),
+    N('屋子里很安静。友阿爹没有抬头。循都基的手握得很紧。'),
+    N('以巴弗提停了一下，继续往下读……')
+  ];
   go(()=>{
-    const w=page(`
-      <div class="eyebrow">终章 · 腓立比</div>
-      <h1>靠主常常喜乐</h1>
-      <div class="story" style="display:grid;gap:10px">
-        <p>主日，腓立比教会聚在吕底亚的家里。以巴弗提站起来，打开保罗的信。</p>
-        <p>读到「我劝友阿爹和循都基要在主里同心」的时候，屋子里很安静。然后，两位姊妹站了起来，走向对方。</p>
-      </div>
-      ${V('你们要靠主常常喜乐。我再说，你们要喜乐。当叫众人知道你们谦让的心。主已经近了。','腓立比书 4:4-5')}
-      <div class="bigtree">${treeSVG()}</div>
-      <div class="stats">
-        <div class="stat"><b>${S.roots}/9</b><span>根扎下的深度</span></div>
-        <div class="stat"><b>${ripe}/9</b><span>结出的果子</span></div>
-        <div class="stat"><b>${Math.round(S.waitSec)}秒</b><span>安静等候</span></div>
-        <div class="stat"><b>${ratio}%</b><span>顺着圣灵的选择</span></div>
-        <div class="stat"><b>${S.dropped}/7</b><span>放下的资历</span></div>
-        <div class="stat"><b>${S.thoughts.size}/8</b><span>接住的思念</span></div>
-      </div>
-      <p class="story" style="font-family:var(--serif)">${S.fought>6?`你一共「凭自己反击」了 ${S.fought} 次，每一次病菌都分成两个。`:''}果子不是做出来的，是结出来的。你让圣灵做了多少，就结出多少。</p>
-      ${V('我靠着那加给我力量的，凡事都能做。','腓立比书 4:13')}
-      <h2>小组分享</h2>
-      <ol class="q">
-        <li><b>去程：</b>你现在心里背着什么重担？你所在的群体里，有哪些「病菌」正在弥漫？</li>
-        <li><b>罗马：</b>保罗在锁链中怎样看见喜乐？在你最近的处境里，圣灵可能想让你看见什么？</li>
-        <li><b>阶梯：</b>九个「向下走」里，哪一个对你最难？为什么谦卑要花时间？</li>
-        <li><b>奔跑：</b>你的背包里，哪一样「资历」最难放下？你会被什么声音叫得回头？</li>
-        <li><b>回程：</b>有没有一段不同心的关系，你可以为它祷告，或者踏出一小步？</li>
-      </ol>
-      <div class="row"><button class="btn" id="again">再走一次</button><button class="btn ghost" id="nt">研经说明</button></div>`);
-    w.querySelector('#again').onclick=()=>location.reload();
-    w.querySelector('#nt').onclick=()=>story({eyebrow:'研经说明',title:'游戏背后的经文判断',paras:['1:15-17 的嫉妒纷争传道发生在罗马；同样的「结党」（ἐριθεία，1:17；2:3）也在腓立比教会里发作。','以巴弗提的病因经文没有交代，「病菌」是属灵寓意。','九种果子取自加拉太书 5:22-23。'],btn:'返回',next:ending});
+    const w=page(`<div class="eyebrow">终章 · 腓立比</div><h2>信还没有读完</h2>
+      <div id="read" style="display:grid;gap:14px"></div>
+      <button class="btn" id="more">读下去</button>
+      <div id="rest" hidden style="display:grid;gap:16px"></div>`);
+    const read=w.querySelector('#read'), more=w.querySelector('#more'), rest=w.querySelector('#rest');
+    let i=0;
+    const step=()=>{
+      if(i<beats.length){ const d=document.createElement('div'); d.className='rise'; d.innerHTML=beats[i++]; read.appendChild(d); d.scrollIntoView({behavior:'smooth',block:'nearest'});
+        if(i<beats.length) return; }
+      more.hidden=true; rest.hidden=false;
+      rest.innerHTML=`
+        <h1 class="rise" style="text-align:center;letter-spacing:.3em">未完</h1>
+        ${N('她们会不会同心，我们不知道。这棵树会不会长起来，我们也不知道。保罗没有写，路加也没有记。')}
+        <div class="bigtree" style="position:relative">${treeSVG()}<div style="position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:64px;color:var(--lamp);opacity:.55">？</div></div>
+        ${V('我深信那在你们心里动了善工的，必成全这工，直到耶稣基督的日子。','腓立比书 1:6')}
+        <h2>旅程记录</h2>
+        <div class="reply" style="gap:6px;font-size:14.5px">
+          <p>背回来的重担：${S.burdens.length?S.burdens.join('、'):'没有'}</p>
+          <p>放下的资历：${S.dropped}/7</p>
+          <p>还在发光的思念：${alive.join('、')||'没有'}</p>
+          <p>腐败了的思念：${rotted.join('、')||'没有'}</p>
+          <p>根扎下的深度：${S.roots}/9　·　安静等候：${Math.round(S.waitSec)} 秒　·　凭自己反击：${S.fought} 次</p>
+        </div>
+        <h2>下一段旅程</h2>
+        <p class="note">保罗在新约留下了十三卷书信。每一卷背后都有一段路，也有一群还没有完成的人。</p>
+        <div class="flist" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr))">
+          ${LETTERS.map(l=>l==='腓立比书'?`<div style="border:1px solid var(--lamp);color:var(--lamp)">${l}<small>你在这里 · 未完</small></div>`:`<div style="opacity:.55">${l}<small>尚未开启</small></div>`).join('')}
+        </div>
+        <h2>小组分享</h2>
+        <ol class="q">
+          <li><b>去程：</b>你现在心里背着什么重担？你所在的群体里，有哪些「病菌」正在弥漫？</li>
+          <li><b>罗马：</b>保罗在锁链中怎样看见喜乐？在你最近的处境里，圣灵可能想让你看见什么？</li>
+          <li><b>阶梯：</b>九个「向下走」里，哪一个对你最难？为什么谦卑要花时间？</li>
+          <li><b>奔跑：</b>你的背包里，哪一样「资历」最难放下？你会被什么声音叫得回头？</li>
+          <li><b>回程：</b>你接住的思念里，哪一样最容易腐败？它会变成什么？</li>
+          <li><b>未完：</b>如果你是友阿爹或循都基，听到自己的名字被读出来，你会怎样回应？</li>
+        </ol>
+        <div class="row"><button class="btn" id="again">再走一次</button><button class="btn ghost" id="nt">研经说明</button></div>`;
+      rest.querySelector('#again').onclick=()=>location.reload();
+      rest.querySelector('#nt').onclick=()=>story({eyebrow:'研经说明',title:'游戏背后的经文判断',paras:[
+        '1:15-17 的嫉妒纷争传道发生在罗马；同样的「结党」（ἐριθεία，1:17；2:3）也在腓立比教会里发作。',
+        '以巴弗提的病因经文没有交代，「病菌」是属灵寓意。',
+        '4:8 的八样思念都附上了希腊文字义。其中「可爱」（προσφιλής）和「有美名」（εὔφημος）在新约只出现在这一节；「德行」（ἀρετή）在保罗书信也只用这一次。',
+        '友阿爹和循都基后来有没有和好，圣经没有记载，所以结局保持开放。',
+        '九种果子取自加拉太书 5:22-23。'],btn:'返回',next:ending});
+      rest.scrollIntoView({behavior:'smooth',block:'start'});
+    };
+    more.onclick=step; step();
   });
 }
 
