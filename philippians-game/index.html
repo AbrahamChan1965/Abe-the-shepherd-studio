@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>以巴弗提的旅程</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=ZCOOL+XiaoWei&family=Noto+Serif+SC:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+:root{
+  color-scheme: dark;
+  --night:#111726;
+  --night-2:#1a2235;
+  --panel:#202a40;
+  --line:#34405a;
+  --text:#ebe5d6;
+  --muted:#a6a99f;
+  --lamp:#f2c14e;        /* 圣灵的光 */
+  --lamp-dim:#8a7440;
+  --leaf:#86ad6f;        /* 根与果子 */
+  --germ:#b95fa3;        /* 病菌 */
+  --fever:#e0645a;       /* 病 */
+  --earth:#6b5a45;
+  --display:"ZCOOL XiaoWei","Noto Serif SC","Songti SC",serif;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--text);font-family:var(--sans);font-size:15px;line-height:1.6;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+[hidden]{display:none!important}
+
+#app{height:100%;display:grid;grid-template-rows:auto 1fr auto;max-width:980px;margin:0 auto}
+
+/* ---------- HUD ---------- */
+#hud{display:flex;align-items:center;gap:14px;padding:10px 16px 8px;border-bottom:1px solid var(--line)}
+#hud .where{flex:1;min-width:0}
+#hud .act{font-family:var(--display);font-size:20px;line-height:1.2;color:var(--lamp);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hud .sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bars{display:grid;gap:5px;width:min(40%,220px)}
+.bar{display:grid;grid-template-columns:3.2em 1fr;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.bar i{display:block;height:7px;border-radius:4px;background:var(--night-2);overflow:hidden;position:relative}
+.bar i b{position:absolute;inset:0 auto 0 0;width:0;border-radius:4px;transition:width .15s linear}
+.bar.sick b{background:var(--fever)}
+.bar.spirit b{background:var(--lamp)}
+.bar.spirit.locked{opacity:.4}
+#treeBtn{background:none;border:0;padding:0;width:74px;flex:none}
+#treeBtn svg{display:block;width:100%;height:auto}
+#burdens{display:flex;gap:4px;flex-wrap:wrap;font-size:11px}
+#burdens span{background:var(--earth);color:var(--text);padding:0 6px;border-radius:3px}
+
+/* ---------- Stage ---------- */
+#stage{position:relative;overflow:hidden;min-height:0}
+#stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding:22px 16px 28px}
+.page{max-width:620px;margin:0 auto;display:grid;gap:16px}
+.eyebrow{font-size:12px;letter-spacing:.2em;color:var(--lamp-dim)}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;line-height:1.25}
+h1{font-size:clamp(34px,8vw,56px);color:var(--lamp)}
+h2{font-size:clamp(24px,5vw,32px)}
+p{margin:0}
+.story p{font-family:var(--serif);font-size:16.5px;line-height:1.95}
+.verse{font-family:var(--serif);font-size:16px;line-height:1.9;padding:12px 16px;border-left:3px solid var(--lamp);background:rgba(242,193,78,.06)}
+.verse cite{display:block;font-style:normal;font-family:var(--sans);font-size:12px;color:var(--lamp-dim);margin-top:4px}
+.note{font-size:13px;color:var(--muted)}
+.btn{background:var(--lamp);color:#241c08;border:0;border-radius:6px;padding:11px 20px;font-weight:700;justify-self:start}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);font-weight:500}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+
+/* choice cards */
+.opts{display:grid;gap:10px}
+.opt{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;font-family:var(--serif);font-size:15.5px;line-height:1.7;position:relative;transition:filter .3s,opacity .3s,border-color .2s}
+.opt:hover{border-color:#51607f}
+.opt .tag{display:block;font-family:var(--sans);font-size:11px;letter-spacing:.12em;color:var(--muted);margin-bottom:2px}
+.opt.spirit{border-color:var(--lamp-dim)}
+.opt.spirit .tag{color:var(--lamp)}
+.opt.dim{filter:blur(4px);opacity:.45;pointer-events:none}
+.opt.locked{opacity:.4;pointer-events:none;border-style:dashed}
+.hint{font-size:13px;color:var(--lamp);display:flex;gap:6px;align-items:center}
+.reply{display:grid;gap:12px;padding:14px;border-radius:8px;background:var(--night-2)}
+.reply.flesh{border-left:3px solid var(--germ)}
+.reply.spirit{border-left:3px solid var(--leaf)}
+
+/* ladder */
+.ladder{display:grid;grid-template-columns:minmax(150px,230px) 1fr;gap:18px;align-items:start}
+@media (max-width:620px){.ladder{grid-template-columns:1fr}.ladder>.stairs{order:2;max-width:260px}#hud .act{font-size:17px}}
+.stairs{width:100%}
+.stairs svg{width:100%;height:auto;display:block}
+.hold{position:relative;overflow:hidden}
+.hold .fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(134,173,111,.35);pointer-events:none}
+.shake{animation:shake .4s}
+@keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+.rise{animation:rise 1.2s ease-out both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+/* runner overlay */
+.pack{position:absolute;left:0;right:0;bottom:0;padding:8px 16px 10px;display:flex;gap:6px;flex-wrap:wrap;background:linear-gradient(transparent,rgba(17,23,38,.92) 30%)}
+.pack .label{width:100%;font-size:11px;color:var(--muted);letter-spacing:.1em}
+.item{border:1px solid var(--lamp-dim);background:rgba(242,193,78,.14);color:var(--lamp);border-radius:4px;padding:3px 8px;font-size:13px;box-shadow:0 0 8px rgba(242,193,78,.25)}
+.item.seen{border-color:var(--earth);background:#3a3026;color:#c7b79d;box-shadow:none;text-decoration:line-through;text-decoration-color:rgba(199,183,157,.5)}
+.item.seen::after{content:" · 丢弃";text-decoration:none;color:var(--leaf)}
+.item:not(.seen){pointer-events:none}
+.lookback{position:absolute;left:16px;top:44px;max-width:280px;background:var(--panel);border:1px solid var(--germ);border-radius:8px;padding:10px 12px;font-size:13px;display:grid;gap:8px}
+.lookback button{justify-self:start;background:var(--germ);border:0;border-radius:4px;padding:4px 12px;color:#fff}
+
+/* toast */
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);max-width:calc(100% - 32px);background:rgba(32,42,64,.96);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-size:14px;font-family:var(--serif);text-align:center;pointer-events:none;opacity:0;transition:opacity .3s;z-index:5}
+#toast.on{opacity:1}
+
+/* ---------- Controls ---------- */
+#ctrl{display:flex;gap:10px;align-items:center;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+#ctrl .keys{flex:1;font-size:12px;color:var(--muted);min-width:0}
+#waitBtn{user-select:none;-webkit-user-select:none;touch-action:none;display:flex;align-items:center;gap:8px;background:var(--night-2);border:1px solid var(--lamp-dim);color:var(--lamp);border-radius:24px;padding:9px 18px;font-weight:500}
+#waitBtn.on{background:var(--lamp);color:#241c08;box-shadow:0 0 18px rgba(242,193,78,.55)}
+#waitBtn.locked{border-color:var(--line);color:var(--muted)}
+#fightBtn{background:transparent;border:1px solid var(--germ);color:#e2a6d2;border-radius:24px;padding:9px 16px}
+
+/* fruit panel */
+#fruitPanel{position:fixed;inset:0;background:rgba(10,13,22,.8);display:grid;place-items:center;z-index:10;padding:16px}
+#fruitPanel .box{background:var(--night-2);border:1px solid var(--line);border-radius:10px;padding:18px;max-width:420px;width:100%;display:grid;gap:12px}
+.flist{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.flist div{background:var(--panel);border-radius:6px;padding:8px;text-align:center;font-size:14px}
+.flist small{display:block;color:var(--muted);font-size:11px}
+
+/* ending */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--panel);border-radius:8px;padding:10px 12px}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;color:var(--lamp)}
+.stat span{font-size:12px;color:var(--muted)}
+.bigtree{max-width:260px;justify-self:center;width:100%}
+ol.q{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:14.5px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div class="where">
+      <div class="act" id="actName">以巴弗提的旅程</div>
+      <div class="sub" id="actSub">腓立比书 · 四章</div>
+      <div id="burdens"></div>
+    </div>
+    <div class="bars">
+      <div class="bar sick"><span>病</span><i><b id="sickBar"></b></i></div>
+      <div class="bar spirit locked" id="spiritRow"><span>圣灵</span><i><b id="spiritBar"></b></i></div>
+    </div>
+    <button id="treeBtn" aria-label="查看圣灵所结的果子"></button>
+  </header>
+  <main id="stage"><div id="toast"></div></main>
+  <footer id="ctrl">
+    <div class="keys" id="keys">长按「等候」安静祷告，圣灵的光会亮起来。</div>
+    <button id="fightBtn" hidden>凭自己反击</button>
+    <button id="waitBtn" class="locked" aria-label="长按等候">🕊 等候</button>
+  </footer>
+</div>
+<div id="fruitPanel" hidden>
+  <div class="box">
+    <h2>圣灵所结的果子</h2>
+    <p class="note">加拉太书 5:22-23。根向下扎多深，果子才向上结多少。</p>
+    <div class="flist" id="flist"></div>
+    <button class="btn" id="fruitClose">继续</button>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ================= 状态 ================= */
+const FRUITS=['仁爱','喜乐','和平','忍耐','恩慈','良善','信实','温柔','节制'];
+const S={
+  spirit:0, sick:0, unlocked:false, waiting:false,
+  fruit:Object.fromEntries(FRUITS.map(f=>[f,0])),
+  roots:0, obey:0, flesh:0, waitSec:0,
+  burdens:[], dropped:0, thoughts:new Set(), fought:0
+};
+const C={lamp:'#f2c14e',leaf:'#86ad6f',germ:'#b95fa3',fever:'#e0645a',text:'#ebe5d6',muted:'#a6a99f',earth:'#6b5a45',night:'#111726',night2:'#1a2235',line:'#34405a'};
+const $=s=>document.querySelector(s);
+const FONT=getComputedStyle(document.body).fontFamily;
+const stage=$('#stage');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+
+/* ================= HUD ================= */
+function setAct(name,sub){ $('#actName').textContent=name; $('#actSub').textContent=sub||''; }
+function fruitColor(l){ return l<0?C.earth : l===0?'none' : l===1?'#a6c98e' : l===2?C.lamp : '#ef8a5a'; }
+const FPOS=[[60,14],[36,22],[84,22],[22,40],[60,34],[98,40],[34,56],[60,56],[86,56]];
+function treeSVG(){
+  const roots=[];
+  for(let i=0;i<9;i++){
+    const side=i%2?1:-1, d=12+i*6, x2=60+side*(8+i*4.5);
+    roots.push(`<path d="M60 80 Q${60+side*4} ${80+d*.5} ${x2} ${80+d}" stroke="${i<S.roots?C.leaf:C.line}" stroke-width="${i<S.roots?2:1}" fill="none" stroke-linecap="round"/>`);
+  }
+  const fr=FRUITS.map((f,i)=>{const l=S.fruit[f],[x,y]=FPOS[i],r=l>=3?6.5:l>=1?5:4;
+    return `<circle cx="${x}" cy="${y}" r="${r}" fill="${fruitColor(l)}" stroke="${l===0?C.muted:'none'}" stroke-dasharray="${l===0?'2 2':''}"><title>${f}</title></circle>`}).join('');
+  return `<svg viewBox="0 0 120 150" role="img" aria-label="生命树：根 ${S.roots}/9">
+    <ellipse cx="60" cy="38" rx="52" ry="32" fill="#1f3326"/>
+    <rect x="57" y="52" width="6" height="28" fill="#5b4a37"/>
+    <line x1="4" y1="80" x2="116" y2="80" stroke="${C.earth}" stroke-width="1.5"/>
+    ${roots.join('')}${fr}</svg>`;
+}
+function hud(){
+  $('#sickBar').style.width=S.sick+'%';
+  $('#spiritBar').style.width=S.spirit+'%';
+  $('#spiritRow').classList.toggle('locked',!S.unlocked);
+  $('#treeBtn').innerHTML=treeSVG();
+  $('#burdens').innerHTML=S.burdens.map(b=>`<span>${b}</span>`).join('');
+}
+function fruit(name,d){ if(!name) return; S.fruit[name]=clamp(S.fruit[name]+d,-1,3); hud(); }
+$('#treeBtn').onclick=()=>{
+  $('#flist').innerHTML=FRUITS.map(f=>{const l=S.fruit[f];return `<div style="border-bottom:3px solid ${l===0?C.line:fruitColor(l)}">${f}<small>${['枯萎','未结','发芽','结果','成熟'][l+1]}</small></div>`}).join('');
+  $('#fruitPanel').hidden=false;
+};
+$('#fruitClose').onclick=()=>{$('#fruitPanel').hidden=true};
+
+let toastT;
+function toast(msg,ms=2200){ const t=$('#toast'); t.innerHTML=msg; t.classList.add('on'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('on'),ms); }
+
+/* ================= 等候（圣灵连接） ================= */
+const waitBtn=$('#waitBtn');
+let lockedNag=0;
+function setWaiting(on){
+  if(on && !S.unlocked){ if(performance.now()-lockedNag>1500){ toast('重担压在心头，心乱如麻，静不下来……'); lockedNag=performance.now(); } return; }
+  S.waiting=on; waitBtn.classList.toggle('on',on);
+}
+waitBtn.addEventListener('pointerdown',e=>{e.preventDefault();waitBtn.setPointerCapture?.(e.pointerId);setWaiting(true)});
+['pointerup','pointercancel','lostpointercapture'].forEach(ev=>waitBtn.addEventListener(ev,()=>setWaiting(false)));
+waitBtn.addEventListener('contextmenu',e=>e.preventDefault());
+addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();if(!e.repeat)setWaiting(true)} });
+addEventListener('keyup',e=>{ if(e.code==='Space'){e.preventDefault();setWaiting(false)} });
+function unlockSpirit(){ S.unlocked=true; waitBtn.classList.remove('locked'); S.spirit=Math.max(S.spirit,20); hud(); }
+
+/* ================= 场景管理与主循环 ================= */
+let cleanup=null, sceneTick=null, decay=true;
+function go(fn,...args){
+  if(cleanup) cleanup(); cleanup=null; sceneTick=null; decay=true;
+  [...stage.children].forEach(c=>{ if(c.id!=='toast') c.remove(); });
+  $('#fightBtn').hidden=true;
+  $('#keys').textContent=S.unlocked?'长按「等候」（或空格键）安静祷告，圣灵的光会亮起来。':'';
+  cleanup=fn(...args)||null;
+}
+let last=performance.now(), hudT=0;
+function loop(now){
+  const dt=Math.min(.05,(now-last)/1000); last=now;
+  if(S.unlocked){
+    if(S.waiting){ S.spirit=clamp(S.spirit+22*dt,0,100); S.waitSec+=dt; }
+    else if(decay){ S.spirit=clamp(S.spirit-1.6*dt,0,100); }
+  }
+  if(sceneTick) sceneTick(dt);
+  hudT+=dt; if(hudT>.1){ hudT=0; $('#sickBar').style.width=S.sick+'%'; $('#spiritBar').style.width=S.spirit+'%'; }
+  requestAnimationFrame(loop);
+}
+function page(html){
+  const wrap=document.createElement('div'); wrap.className='scroll';
+  wrap.innerHTML=`<div class="page">${html}</div>`; stage.appendChild(wrap); wrap.scrollTop=0; return wrap;
+}
+const V=(t,ref)=>`<div class="verse">${t}<cite>${ref}</cite></div>`;
+
+/* ---------- 叙事页 ---------- */
+function story({eyebrow,title,paras=[],verses=[],btn='继续',next,extra=''}){
+  return go(()=>{
+    const w=page(`${eyebrow?`<div class="eyebrow">${eyebrow}</div>`:''}${title?`<h2>${title}</h2>`:''}
+      <div class="story" style="display:grid;gap:12px">${paras.map(p=>`<p>${p}</p>`).join('')}</div>
+      ${verses.map(v=>V(v[0],v[1])).join('')}${extra}
+      <button class="btn" id="nx">${btn}</button>`);
+    w.querySelector('#nx').onclick=next;
+  });
+}
+
+/* ---------- 选择卡 ---------- */
+/* option: {kind:'flesh'|'spirit'|'locked', text, fruit, reply, verse:[t,ref], burden:'+x'|'-x'} */
+function choice({eyebrow,title,situation,verses=[],options,need=40,next}){
+  go(()=>{
+    const hasSpirit=options.some(o=>o.kind==='spirit');
+    const w=page(`${eyebrow?`<div class="eyebrow">${eyebrow}</div>`:''}<h2>${title}</h2>
+      <div class="story"><p>${situation}</p></div>${verses.map(v=>V(v[0],v[1])).join('')}
+      ${hasSpirit?`<div class="hint" id="hint">🕊 有一条路还看不清。长按「等候」，让圣灵光照。</div>`:''}
+      <div class="opts" id="opts"></div><div id="out"></div>`);
+    const box=w.querySelector('#opts');
+    const order=[...options].sort(()=>Math.random()-.5);
+    order.forEach(o=>{
+      const b=document.createElement('button');
+      b.className='opt '+o.kind+(o.kind==='spirit'?' dim':'');
+      b.innerHTML=`<span class="tag">${o.kind==='spirit'?'顺着圣灵':o.kind==='locked'?'还看不见的路':'凭自己'}</span>${o.text}`;
+      b.onclick=()=>pickOpt(o,w);
+      box.appendChild(b); o.el=b;
+    });
+    sceneTick=()=>{
+      const sp=options.find(o=>o.kind==='spirit'); if(!sp||sp.shown) return;
+      if(S.spirit>=need){ sp.shown=true; sp.el.classList.remove('dim'); const h=w.querySelector('#hint'); if(h) h.textContent='🕊 圣灵光照，你看见了另一条路。'; }
+    };
+    function pickOpt(o){
+      sceneTick=null;
+      box.querySelectorAll('.opt').forEach(b=>b.disabled=true);
+      box.style.opacity=.55;
+      const spirit=o.kind==='spirit';
+      if(spirit){ S.obey++; S.spirit=clamp(S.spirit+10,0,100); fruit(o.fruit,+1); }
+      else { S.flesh++; S.spirit=clamp(S.spirit-15,0,100); fruit(o.fruit,-1); }
+      if(o.burden?.[0]==='+' && !S.burdens.includes(o.burden.slice(1))) S.burdens.push(o.burden.slice(1));
+      if(o.burden?.[0]==='-') S.burdens=S.burdens.filter(b=>b!==o.burden.slice(1));
+      hud();
+      const out=w.querySelector('#out');
+      out.innerHTML=`<div class="reply ${spirit?'spirit':'flesh'} rise">
+        <p class="story" style="font-family:var(--serif)">${o.reply}</p>
+        ${o.fruit?`<p class="note">${spirit?`🌱 「${o.fruit}」结出来了`:`🍂 「${o.fruit}」枯萎了`}</p>`:''}
+        ${o.verse?V(o.verse[0],o.verse[1]):''}
+        <button class="btn" id="nx">继续</button></div>`;
+      out.querySelector('#nx').onclick=next;
+      out.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+  });
+}
+
+/* ================= 画布工具 ================= */
+function makeCanvas(){
+  const cv=document.createElement('canvas'); stage.prepend(cv);
+  const ctx=cv.getContext('2d'); let W=0,H=0;
+  const fit=()=>{ const r=stage.getBoundingClientRect(), d=Math.min(2,devicePixelRatio||1);
+    W=r.width; H=r.height; cv.width=W*d; cv.height=H*d; ctx.setTransform(d,0,0,d,0,0); };
+  fit(); addEventListener('resize',fit);
+  return {cv,ctx,get W(){return W},get H(){return H},off(){removeEventListener('resize',fit)}};
+}
+function drawGerm(ctx,g){
+  ctx.save(); ctx.translate(g.x,g.y);
+  const n=10; ctx.beginPath();
+  for(let i=0;i<=n*2;i++){ const a=i/(n*2)*Math.PI*2+g.ph, r=i%2?g.r:g.r*1.28; ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r); }
+  ctx.fillStyle='rgba(185,95,163,.78)'; ctx.fill();
+  ctx.strokeStyle='rgba(226,166,210,.8)'; ctx.lineWidth=1; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font=`500 ${Math.max(10,g.r*.62)}px ${FONT}`;
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(g.label,0,1);
+  ctx.restore();
+}
+function drawTraveler(ctx,x,y,burden,t,sea){
+  ctx.save(); ctx.translate(x,y);
+  if(sea){ ctx.fillStyle='#5b4a37'; ctx.beginPath(); ctx.moveTo(-26,12); ctx.lineTo(26,12); ctx.lineTo(18,22); ctx.lineTo(-18,22); ctx.closePath(); ctx.fill(); }
+  const bob=sea?Math.sin(t*3)*2:Math.abs(Math.sin(t*8))*-2;
+  ctx.translate(0,bob);
+  for(let i=0;i<burden;i++){ ctx.fillStyle=i%2?'#7a6750':'#8b7659'; ctx.beginPath(); ctx.roundRect(-20-i*2,-10-i*7,13,8,3); ctx.fill(); }
+  ctx.fillStyle='#c9b89a'; ctx.beginPath(); ctx.moveTo(-9,12); ctx.lineTo(9,12); ctx.lineTo(5,-6); ctx.lineTo(-5,-6); ctx.closePath(); ctx.fill();
+  ctx.fillStyle='#e6d3b3'; ctx.beginPath(); ctx.arc(0,-11,6,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle='#8b6f4e'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(10,-14); ctx.lineTo(13,14); ctx.stroke();
+  ctx.restore();
+}
+function pop(list,x,y,text,color){ list.push({x,y,text,color,life:1.4}); }
+function drawPops(ctx,list,dt){
+  for(const p of list){ p.life-=dt; p.y-=22*dt; ctx.globalAlpha=clamp(p.life,0,1); ctx.fillStyle=p.color; ctx.font=`500 14px ${FONT}`; ctx.textAlign='center'; ctx.fillText(p.text,p.x,p.y); }
+  ctx.globalAlpha=1; for(let i=list.length-1;i>=0;i--) if(list[i].life<=0) list.splice(i,1);
+}
+
+/* ================= 旅程（去程 / 回程） ================= */
+const LEGS={
+  out:[
+    {name:'腓立比 → 帖撒罗尼迦',sub:'埃格那提亚大道',dist:2200,rate:.85,types:['结党','纷争','怨言','不同心']},
+    {name:'横渡亚得里亚海',sub:'底拉古 → 布林迪西',dist:2200,rate:1.15,types:['嫉妒','纷争','结党','敌对','怨言'],sea:true},
+    {name:'亚壁古道 → 罗马',sub:'病得几乎要死（2:27）',dist:1900,rate:1.5,types:['嫉妒','结党','纷争','怨言','虚荣','忧虑'],fever:true}
+  ],
+  back:[
+    {name:'罗马 → 亚壁古道',sub:'回家的路',dist:2300,rate:1.1,types:['忧虑','怨言','纷争']},
+    {name:'横渡亚得里亚海',sub:'布林迪西 → 底拉古',dist:2300,rate:1.3,types:['敌对','嫉妒','纷争','结党'],sea:true},
+    {name:'埃格那提亚大道 → 腓立比',sub:'带着一封喜乐的信',dist:2500,rate:1.5,types:['结党','不同心','怨言','嫉妒','虚荣']}
+  ]
+};
+function journey(mode,idx,next){
+  go(()=>{
+    const L=LEGS[mode][idx], back=mode==='back';
+    setAct(L.name,L.sub);
+    const K=makeCanvas(), {ctx}=K;
+    const germs=[], pops=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
+    let dist=0, t=0, spawn=0, py=K.H*.55, ty=py, flash=0, done=false, cool=0;
+    $('#fightBtn').hidden=false;
+    $('#keys').innerHTML=back
+      ?'拖动/↑↓ 躲避病菌 · 长按「等候」举起平安的盾'
+      :'拖动/↑↓ 躲避病菌 · 病菌太多？试试「凭自己反击」';
+    if(idx===0) toast(back?'同样的路，同样的病菌。但这一次，你学会了等候。':'结党、嫉妒、纷争、怨言……像病菌一样弥漫在路上。',3200);
+    const move=e=>{ const r=K.cv.getBoundingClientRect(); ty=clamp(e.clientY-r.top,40,K.H-30); };
+    K.cv.addEventListener('pointermove',move); K.cv.addEventListener('pointerdown',move);
+    const keys={};
+    const kd=e=>{keys[e.key]=true}, ku=e=>{keys[e.key]=false};
+    addEventListener('keydown',kd); addEventListener('keyup',ku);
+    const fight=()=>{
+      if(cool>0) return; cool=.35;
+      const px=K.W*.2;
+      const g=germs.filter(g=>g.x>px&&g.x<px+300).sort((a,b)=>a.x-b.x)[0];
+      S.fought++; S.flesh++; if(S.unlocked) S.spirit=clamp(S.spirit-5,0,100);
+      if(!g){ pop(pops,px+40,py-30,'扑了个空',C.muted); return; }
+      germs.splice(germs.indexOf(g),1);
+      for(const s of [-1,1]) germs.push({x:g.x,y:clamp(g.y+s*26,40,K.H-30),r:Math.max(13,g.r*.85),label:g.label,vx:g.vx*1.1,vy:s*40,ph:0,w:g.w});
+      pop(pops,g.x,g.y-g.r-6,'相咬相吞，反而分成两个',C.germ);
+      if(S.fought===1) toast('「你们要谨慎，若相咬相吞，只怕要彼此消灭了。」加拉太书 5:15',3600);
+    };
+    $('#fightBtn').onclick=fight;
+    const fk=e=>{ if(e.key==='f'||e.key==='F') fight(); }; addEventListener('keydown',fk);
+
+    sceneTick=dt=>{
+      if(done) return; t+=dt; cool-=dt;
+      const W=K.W,H=K.H, px=W*.2;
+      if(keys.ArrowUp) ty=clamp(ty-260*dt,40,H-30);
+      if(keys.ArrowDown) ty=clamp(ty+260*dt,40,H-30);
+      const heavy=S.burdens.length;
+      py+=(ty-py)*Math.min(1,dt*7/(1+heavy*.5));
+      const shield=back&&S.waiting&&S.spirit>2;
+      const speed=150*(1-.1*heavy)*(S.waiting?.3:1);
+      dist+=speed*dt;
+      // 病
+      if(!back){ S.sick+=heavy*.5*dt+(L.fever?2.4*dt:0); if(!L.fever) S.sick=Math.min(S.sick,90); }
+      else if(S.waiting) S.sick=Math.max(0,S.sick-4*dt);
+      // 生成病菌
+      spawn-=dt;
+      if(spawn<=0 && dist<L.dist-200){ spawn=rnd(.55,1.25)/L.rate;
+        germs.push({x:W+30,y:rnd(50,H-40),r:rnd(17,25),label:pick(L.types),vx:-rnd(60,130)-speed*.6,vy:0,ph:Math.random()*6,w:rnd(1,2.5)}); }
+      for(let i=germs.length-1;i>=0;i--){ const g=germs[i];
+        g.x+=g.vx*dt; g.vy*=.95; g.y+=(g.vy+Math.sin(t*g.w+g.ph)*18)*dt; g.ph+=dt*.6;
+        const d=Math.hypot(g.x-px,g.y-py);
+        if(shield && d<g.r+40){ germs.splice(i,1); S.spirit=clamp(S.spirit-7,0,100); pop(pops,g.x,g.y,'平安保守',C.lamp); continue; }
+        if(d<g.r+14){ germs.splice(i,1); S.sick=clamp(S.sick+(back?7:9),0,100); flash=.35; pop(pops,px,py-34,'染上「'+g.label+'」',C.fever); continue; }
+        if(g.x<-40) germs.splice(i,1);
+      }
+      // 结局判定
+      if(S.sick>=100){
+        if(!back){ done=true; return next('collapse'); }
+        S.sick=45; toast('你倒下了……然而神怜恤你，又把你扶起来。',3000);
+      }
+      if(dist>=L.dist){ done=true; return next(); }
+
+      // ---- 画 ----
+      const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0c1120'); sky.addColorStop(1,L.sea?'#15314a':'#2a2a3a');
+      ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
+      for(const s of stars){ ctx.fillStyle=`rgba(235,229,214,${.25+s[2]*.5})`; ctx.fillRect(((s[0]*W-dist*.02)%W+W)%W,s[1]*H,1.5,1.5); }
+      if(L.sea){
+        ctx.strokeStyle='rgba(120,170,200,.25)'; ctx.lineWidth=1.5;
+        for(let r=0;r<9;r++){ const y=H*.25+r*H*.085; ctx.beginPath();
+          for(let x=0;x<=W;x+=12) ctx.lineTo(x,y+Math.sin((x+dist*(.5+r*.1))/40+r)*4); ctx.stroke(); }
+      } else {
+        ctx.fillStyle='#1d2433'; ctx.beginPath(); ctx.moveTo(0,H*.32);
+        for(let x=0;x<=W;x+=16) ctx.lineTo(x,H*.32-Math.abs(Math.sin((x+dist*.15)/120))*38); ctx.lineTo(W,H); ctx.lineTo(0,H); ctx.fill();
+        ctx.fillStyle='#262c3a'; ctx.fillRect(0,H*.34,W,H*.66);
+        ctx.strokeStyle='rgba(166,169,159,.12)'; ctx.setLineDash([22,26]); ctx.lineDashOffset=dist%48;
+        for(const f of [.5,.75]){ ctx.beginPath(); ctx.moveTo(W,H*f); ctx.lineTo(0,H*f); ctx.stroke(); }
+        ctx.setLineDash([]);
+        // 里程碑
+        const m=(W+80)-(dist*1.0)%(W+160);
+        ctx.fillStyle='#4a4f5c'; ctx.fillRect(m,H*.34-26,10,26);
+      }
+      if(S.sick>60){ ctx.fillStyle=`rgba(224,100,90,${(S.sick-60)/400})`; ctx.fillRect(0,0,W,H); }
+      germs.forEach(g=>drawGerm(ctx,g));
+      if(shield){ ctx.save(); ctx.globalAlpha=.25+S.spirit/300; ctx.strokeStyle=C.lamp; ctx.fillStyle='rgba(242,193,78,.12)'; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(px,py-4,40,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+        ctx.fillStyle=C.lamp; ctx.font='12px '+FONT; ctx.textAlign='center'; ctx.fillText('平安',px,py-48); }
+      drawTraveler(ctx,px,py,heavy,t,L.sea);
+      if(flash>0){ flash-=dt; ctx.fillStyle=`rgba(224,100,90,${flash})`; ctx.fillRect(0,0,W,H); }
+      drawPops(ctx,pops,dt);
+      // 进度
+      const pw=W-32; ctx.fillStyle=C.night2; ctx.fillRect(16,12,pw,4);
+      ctx.fillStyle=back?C.leaf:C.lamp; ctx.fillRect(16,12,pw*Math.min(1,dist/L.dist),4);
+      ctx.fillStyle=C.muted; ctx.font='12px '+FONT; ctx.textAlign='left';
+      const [a,b]=L.name.split(' → '); ctx.fillText(a,16,32); if(b){ ctx.textAlign='right'; ctx.fillText(b,W-16,32); }
+    };
+    return ()=>{ K.off(); removeEventListener('keydown',kd); removeEventListener('keyup',ku); removeEventListener('keydown',fk); };
+  });
+}
+
+/* ================= 开场 ================= */
+function title(){
+  setAct('以巴弗提的旅程','腓立比书 · 一个关于喜乐的旅程');
+  go(()=>{
+    const w=page(`
+      <div class="eyebrow">腓立比书 · 圣经游戏</div>
+      <h1>以巴弗提的旅程</h1>
+      <div class="story"><p>主后约 61 年。腓立比教会差派以巴弗提，带着馈送，走一千多公里路去罗马，探望被锁着的保罗。</p></div>
+      ${V('我已经从以巴弗提受了你们的馈送，当作极美的香气，为神所收纳、所喜悦的祭物。','腓立比书 4:18')}
+      <div class="story" style="display:grid;gap:10px">
+        <p>这一路上，你会遇见弥漫四周的「病菌」：<b style="color:#e2a6d2">结党、嫉妒、纷争、怨言</b>。</p>
+        <p>这个游戏不比谁手快。它问的是：你有多愿意停下来，向圣灵敞开，让祂在你里面工作。</p>
+      </div>
+      <div class="row"><button class="btn" id="go">出发</button><button class="btn ghost" id="notes">研经说明</button></div>
+      <div class="note">全程约 20 分钟，适合个人或小组。手机拖动操作；电脑可用方向键和空格键。</div>`);
+    w.querySelector('#go').onclick=prologue;
+    w.querySelector('#notes').onclick=notes;
+  });
+}
+function notes(){
+  story({eyebrow:'研经说明',title:'游戏背后的经文判断',
+    paras:[
+      '<b>嫉妒纷争的传道发生在哪里？</b>腓立比书 1:15-17 记载「有的传基督是出于嫉妒纷争」。主流注释（Fee、O\'Brien、Bockmuehl 等）都认为这件事发生在保罗被囚之地，也就是罗马，而不是腓立比。',
+      '<b>那为什么腓立比也有同样的病？</b>1:17 的「结党」（ἐριθεία）在 2:3「凡事不可结党」再出现一次，全书只有这两处。腓立比教会自己也有不同心的问题（1:27、2:2-4、2:14、4:2）。保罗讲罗马的事，是要教腓立比人在家里怎样面对同一个病。',
+      '<b>以巴弗提的病。</b>经文只说他「病了，几乎要死」（2:27），并没有交代病因。游戏把结党纷争画成「病菌」，是属灵的寓意，不代表经文说他的病是由此而来。',
+      '<b>果子与根。</b>「喜乐值」用加拉太书 5:22-23 圣灵所结的九种果子来表达；「根」代表第二章基督虚己的谦卑。'
+    ],btn:'返回',next:title});
+}
+function prologue(){
+  S.burdens=['馈送的重托']; hud();
+  story({eyebrow:'序幕 · 腓立比',title:'背着重担出发',
+    paras:['腓立比教会是保罗最亲爱的教会，从头一天就与他同心合意兴旺福音。','可是近来，教会里出现了裂痕。两位一同劳苦过的姊妹，<b>友阿爹</b>和<b>循都基</b>不能同心。会众开始分边站，私下议论，怨言四起。','以巴弗提带着教会的馈送出发了，心里却压着这些事。'],
+    verses:[['我劝友阿爹和循都基要在主里同心。','腓立比书 4:2']],
+    btn:'面对第一个重担',next:out1});
+}
+function out1(){
+  setAct('序幕 · 出发前夜','腓立比');
+  choice({eyebrow:'序幕 · 重担一',title:'教会不同心',
+    situation:'出发前一晚，两边的人都来找以巴弗提，希望他到了罗马，在保罗面前替自己说话。你会怎么做？',
+    options:[
+      {kind:'flesh',text:'答应其中一边。毕竟她们比较有道理。',reply:'你选了边。可是心里知道，你刚刚也加入了「结党」。',burden:'+不同心'},
+      {kind:'flesh',text:'两边都答应，先把人打发走再说。',reply:'两边都满意地离开了。你却背上了两份承诺，谁也不能得罪。',burden:'+不同心'},
+      {kind:'locked',text:'……（这时的以巴弗提，还看不见这条路）'}
+    ],next:()=>journey('out',0,r=>r==='collapse'?collapse():out2())});
+}
+function out2(){
+  setAct('序幕 · 帖撒罗尼迦','旅途中');
+  choice({eyebrow:'序幕 · 重担二',title:'外面的敌对',
+    situation:'在帖撒罗尼迦，你听见消息：腓立比城里有人敌视信徒，教会正受压力。教会里面在吵，外面又有人逼迫。你会怎么想？',
+    verses:[['凡事不怕敌人的惊吓……','腓立比书 1:28']],
+    options:[
+      {kind:'flesh',text:'加快脚步。越早办完事，越早回去收拾局面。',reply:'你把自己逼得更紧，脚步更急，呼吸更乱。',burden:'+敌对'},
+      {kind:'flesh',text:'在心里反复盘算：回去以后要怎样对付那些人。',reply:'那些念头整夜在你脑中打转，赶都赶不走。',burden:'+敌对'},
+      {kind:'locked',text:'……（这条路还藏在黑暗里）'}
+    ],next:()=>journey('out',1,r=>r==='collapse'?collapse():out3())});
+}
+function out3(){
+  setAct('序幕 · 布林迪西','意大利');
+  choice({eyebrow:'序幕 · 重担三',title:'忧虑变成了病',
+    situation:'上岸的时候，你开始发烧。离罗马还有五百多公里。你心里想：',
+    options:[
+      {kind:'flesh',text:'撑着走。这是教会托付给我的，不能倒下。',reply:'你咬紧牙关继续赶路。可是热度一天比一天高。',burden:'+忧虑'},
+      {kind:'flesh',text:'要是我倒下了，馈送怎么办？教会会怎么看我？',reply:'忧虑像另一块石头，压在已经很重的背上。',burden:'+忧虑'},
+      {kind:'locked',text:'……'}
+    ],next:()=>journey('out',2,()=>collapse())});
+}
+function collapse(){
+  S.sick=100; hud();
+  setAct('罗马城门外','病得几乎要死');
+  story({eyebrow:'序幕 · 终',title:'倒在罗马城门前',
+    paras:['以巴弗提倒下了。','他走了一千多公里，背着教会的馈送，也背着教会的纷争、外面的敌对，还有自己的忧虑。他靠着一腔热心走到这里，现在再也走不动了。','你可能已经发现：<b>不管你怎样躲、怎样反击，凭自己是走不到终点的。</b>'],
+    verses:[['他实在是病了，几乎要死。','腓立比书 2:27上']],
+    btn:'……',next:mercy});
+}
+function mercy(){
+  S.sick=55; unlockSpirit(); S.burdens=[]; hud();
+  setAct('罗马 · 保罗的租屋','神怜恤他');
+  story({eyebrow:'转折',title:'然而神怜恤他',
+    paras:['醒过来的时候，他听见一个熟悉的声音在祷告。那是保罗，手腕上还锁着铁链。','教会的馈送终于交到了保罗手里。背上的重担一件一件卸了下来，不是他自己卸的。','现在，你的画面底部亮起了一个按钮：<b style="color:var(--lamp)">🕊 等候</b>。长按它（电脑按住空格键），安静祷告，圣灵的光就会亮起来。圣灵的光会<b>照明</b>你看不见的路，<b>保守</b>你不被病菌侵蚀，<b>加力</b>给你做凭自己做不到的事。'],
+    verses:[['然而神怜恤他，不但怜恤他，也怜恤我，免得我忧上加忧。','腓立比书 2:27下'],['因为你们立志行事，都是神在你们心里运行，为要成就他的美意。','腓立比书 2:13']],
+    extra:'<p class="note">试试看：现在就长按「等候」，看上方「圣灵」一栏亮起来。</p>',
+    btn:'进入第一章',next:act1});
+}
+
+/* ================= 第一章 · 罗马 ================= */
+const ROME=[
+  {title:'锁链',situation:'你看见保罗的手被铁链锁着，旁边日夜站着御营的兵，一班换过一班。你心里第一个念头是：',
+    options:[
+      {kind:'flesh',text:'神怎么容许这样的事？他为主摆上一切，结果竟是这样。',fruit:'喜乐',reply:'苦毒像一层灰，蒙在你心上。'},
+      {kind:'flesh',text:'赶快找关系，托人把他弄出来。',fruit:'喜乐',reply:'你东奔西走，却找不到一扇打得开的门。'},
+      {kind:'spirit',text:'这些士兵一班换过一班，每一个都坐在保罗身边，听他讲基督。',fruit:'喜乐',reply:'你忽然看懂了：锁链锁住的是保罗，福音却没有被锁住。',verse:['我所遭遇的事，更是叫福音兴旺，以致我受的捆锁在御营全军和其余的人中，已经显明是为基督的。','腓立比书 1:12-13']}]},
+  {title:'同一个病菌',situation:'你听说，城里有些传道人出于嫉妒纷争传基督，想加增保罗捆锁的苦楚。你愣住了：<b style="color:#e2a6d2">「结党」这个病菌，在罗马也有。</b>跟腓立比一模一样。',
+    options:[
+      {kind:'flesh',text:'揭穿他们！让大家都知道他们的动机不纯。',fruit:'和平',reply:'你越说越气。你发现，自己也开始发烧了。'},
+      {kind:'flesh',text:'我们也组织起来，传得比他们更好、更多。',fruit:'和平',reply:'你刚刚也结了一个党。'},
+      {kind:'spirit',text:'学保罗的眼光：不管动机怎样，基督究竟被传开了。',fruit:'和平',reply:'保罗没有被嫉妒拖进纷争。他的眼睛定在基督身上，所以病菌碰不到他的心。',verse:['这有何妨呢？或是假意，或是真心，无论怎样，基督究竟被传开了。为此，我就欢喜，并且还要欢喜。','腓立比书 1:18']}]},
+  {title:'生死未卜',situation:'审讯的日子近了，保罗可能被判死刑。夜里，你问他：「你不怕吗？」你自己心里想的是：',
+    options:[
+      {kind:'flesh',text:'只要能活下来，说话软一点也没关系。',fruit:'信实',reply:'你的心开始讨价还价。'},
+      {kind:'flesh',text:'完了。一切都完了。',fruit:'信实',reply:'绝望把最后一点光也吹熄了。'},
+      {kind:'spirit',text:'无论是生是死，只要基督在他身上照常显大。',fruit:'信实',reply:'保罗笑了：「因我活着就是基督，我死了就有益处。」',verse:['……无论是生是死，总叫基督在我身上照常显大。因我活着就是基督，我死了就有益处。','腓立比书 1:20-21']}]},
+  {title:'「腓立比的弟兄姊妹好吗？」',situation:'保罗问起腓立比的教会。你想起友阿爹和循都基，想起分边站的会众。你会怎么回答？',
+    options:[
+      {kind:'flesh',text:'都很好，你不用担心。',fruit:'良善',reply:'你隐瞒了。这句话一出口，那份重担就只剩你一个人背。'},
+      {kind:'flesh',text:'别提了，那两位简直无药可救。',fruit:'恩慈',reply:'你的话里带着刺，连你自己都听得出来。'},
+      {kind:'spirit',text:'老老实实说出实情，然后和保罗一起，为她们跪下祷告。',fruit:'恩慈',reply:'保罗没有责备任何人。他每逢想起她们，就感谢神，常是欢欢喜喜地祈求。',verse:['只要你们行事为人与基督的福音相称……知道你们同有一个心志，站立得稳，为所信的福音齐心努力。','腓立比书 1:27']}]},
+  {title:'漫长的等待',situation:'日子一天天过去，判决迟迟不来。你身体好了一些，心却开始焦躁。',
+    options:[
+      {kind:'flesh',text:'到处打听消息，一天问三次。',fruit:'忍耐',reply:'每个消息都让你更不安。'},
+      {kind:'flesh',text:'干脆麻木，什么都不去想。',fruit:'忍耐',reply:'你关上了心，连喜乐也一起关在门外。'},
+      {kind:'spirit',text:'把等待变成祷告。每想起一个人，就为他感谢神。',fruit:'忍耐',reply:'等待没有变短，你里面却多了一种安稳。',verse:['我每逢想念你们，就感谢我的神；每逢为你们众人祈求的时候，常是欢欢喜喜地祈求。','腓立比书 1:3-4']}]}
+];
+function act1(){
+  setAct('第一章 · 罗马','捆锁中的喜乐');
+  story({eyebrow:'第一章',title:'捆锁中的喜乐',
+    paras:['这是一个很坏的处境：保罗被锁着，御营全军看守着他，城里还有人出于嫉妒传道，想让他更苦。','接下来有五个处境。每一次，「凭自己」的路都看得很清楚。另有一条路是模糊的，要先<b>长按「等候」</b>，让圣灵光照，它才会显出来。'],
+    verses:[['因为我知道，这事借着你们的祈祷和耶稣基督之灵的帮助，终必叫我得救。','腓立比书 1:19']],
+    btn:'开始',next:()=>romeCard(0)});
+}
+function romeCard(i){
+  if(i>=ROME.length) return story({eyebrow:'第一章 · 完',title:'活着就是基督',
+    paras:['你的身体渐渐好起来了。','以巴弗提发现，保罗的喜乐不是来自环境变好，而是来自他跟基督的连接。环境没有变，被锁的人却比看守他的人更自由。'],
+    verses:[['因我活着就是基督，我死了就有益处。','腓立比书 1:21']],btn:'进入第二章',next:()=>{S.sick=Math.min(S.sick,30);hud();act2();}});
+  const c=ROME[i];
+  setAct('第一章 · 罗马',`处境 ${i+1}/${ROME.length} · ${c.title}`);
+  choice({eyebrow:`第一章 · 处境 ${i+1}`,title:c.title,situation:c.situation,options:c.options,need:40,next:()=>romeCard(i+1)});
+}
+
+/* ================= 第二章 · 谦卑阶梯 ================= */
+const STEPS=[
+  {ph:'他本有神的形像',f:'仁爱',sit:'同工会上，你的方案被否决了，大家选了另一位同工的方案。',up:'私下找人拉票，下次再翻案。',down:'真心帮助对方的方案做成。'},
+  {ph:'不以自己与神同等为强夺的',f:'喜乐',sit:'活动办得很成功。台上大家感谢了别人，你的付出没有人提。',up:'找机会轻轻提一句：其实那部分是我做的。',down:'为对方被看见而真心欢喜。'},
+  {ph:'反倒虚己',f:'和平',sit:'友阿爹和循都基都来找你，要你评评理。',up:'站到有理的一边，壮大这一边的声势。',down:'不结党。先分别聆听，再邀请她们一起祷告。'},
+  {ph:'取了奴仆的形像',f:'忍耐',sit:'新来的同工做事很慢，一件事教了三次还是出错。',up:'拿过来自己做，又快又好。',down:'陪着他慢慢学。'},
+  {ph:'成为人的样式',f:'恩慈',sit:'曾经当众批评过你的人生病住院了。',up:'心里暗暗说：这就是报应。',down:'煮一锅汤，送到他家门口。'},
+  {ph:'既有人的样子，就自己卑微',f:'良善',sit:'事情出错了，你可以把责任推给一个不在场的同工。',up:'顺水推舟，反正他也有份。',down:'承认是自己的疏忽。'},
+  {ph:'存心顺服',f:'信实',sit:'你答应了一件小事，又闷又没有人看见。',up:'找个理由推掉，反正没人会发现。',down:'默默把它做完。'},
+  {ph:'以至于死',f:'温柔',sit:'有人在群组里误会你，说了很难听的话。',up:'写一篇长文，逐条反驳。',down:'私下温和地解释，不求赢。'},
+  {ph:'且死在十字架上',f:'节制',sit:'有一个在众人面前显出你恩赐与资历的机会。',up:'抓住机会，好好表现。',down:'把机会让给一位更需要被建立的人。'}
+];
+function act2(){
+  setAct('第二章 · 基督的心','谦卑阶梯');
+  story({eyebrow:'第二章',title:'向下扎根，向上结果',
+    paras:['果子长在树上，看起来是向上结出来的。可是一棵树能结多少果子，要看它的根向下扎得多深。','这一章，你要跟着基督的路<b>向下走</b>九级阶梯。每走一级，根就扎深一段，一种果子就在谦卑中结出来。','「向上抓」只要一按就行，很快；「向下走」要<b>按住不放</b>，要花时间。谦卑本来就是这样。'],
+    verses:[['凡事不可结党，不可贪图虚浮的荣耀；只要存心谦卑，各人看别人比自己强。各人不要单顾自己的事，也要顾别人的事。你们当以基督耶稣的心为心。','腓立比书 2:3-5']],
+    btn:'走下第一级',next:()=>stair(0)});
+}
+function stairsSVG(k){
+  const rows=STEPS.map((st,i)=>{const x=i*14,y=14+i*30,on=i<k,cur=i===k;
+    return `<rect x="${x}" y="${y}" width="${200-x}" height="22" rx="3" fill="${on?'#2c3d2c':C.night2}" stroke="${on?C.leaf:cur?C.lamp:C.line}"/>
+      <text x="${x+8}" y="${y+15}" font-size="10" fill="${on||cur?C.text:C.muted}" font-family="Noto Serif SC,serif">${st.ph}</text>`}).join('');
+  const dot=k<9?`<circle cx="${k*14+10}" cy="${14+k*30-5}" r="4.5" fill="${C.lamp}"/>`
+    :`<g stroke="${C.lamp}" stroke-width="3"><line x1="160" y1="288" x2="160" y2="322"/><line x1="148" y1="298" x2="172" y2="298"/></g><circle cx="140" cy="318" r="4.5" fill="${C.lamp}"/>`;
+  return `<svg viewBox="0 0 200 326" role="img" aria-label="谦卑阶梯：第 ${Math.min(k,9)}/9 级">${rows}${dot}</svg>`;
+}
+function stair(k){
+  if(k>=STEPS.length) return cross();
+  const s=STEPS[k];
+  setAct('第二章 · 谦卑阶梯',`第 ${k+1}/9 级 · 谦卑中的${s.f}`);
+  go(()=>{
+    decay=false;
+    const w=page(`<div class="ladder"><div class="stairs" id="st">${stairsSVG(k)}</div>
+      <div style="display:grid;gap:14px">
+        <div class="eyebrow">第 ${k+1} 级 · ${s.ph}</div>
+        <h2>谦卑中的${s.f}</h2>
+        <div class="story"><p>${s.sit}</p></div>
+        <div class="opts">
+          <button class="opt" id="up"><span class="tag">↑ 向上抓 · 点一下</span>${s.up}</button>
+          <button class="opt spirit hold" id="down"><span class="fill"></span><span class="tag">↓ 向下走 · 按住不放</span>${s.down}</button>
+        </div>
+        <div id="msg" class="note"></div>
+      </div></div>`);
+    const up=w.querySelector('#up'), down=w.querySelector('#down'), fill=down.querySelector('.fill'), msg=w.querySelector('#msg');
+    up.onclick=()=>{
+      S.flesh++; fruit(s.f,-1);
+      const st=w.querySelector('#st'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
+      msg.innerHTML='<span style="color:#e2a6d2">阶梯晃了一下。这是「强夺」，不是基督的心（2:6）。「'+s.f+'」枯萎了。再选一次。</span>';
+    };
+    let holding=false, p=0, ok=false;
+    const need=S.spirit>=30?0.9:1.6;
+    down.addEventListener('pointerdown',e=>{e.preventDefault();holding=true});
+    ['pointerup','pointerleave','pointercancel'].forEach(ev=>down.addEventListener(ev,()=>{holding=false}));
+    down.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') { e.preventDefault(); holding=true; } });
+    down.addEventListener('keyup',()=>{holding=false});
+    msg.textContent=S.spirit>=30?'圣灵加力：向下走的路变得容易了一些。':'提示：先「等候」，让圣灵加力，向下走会快一些。';
+    sceneTick=dt=>{
+      if(ok) return;
+      p=holding?Math.min(1,p+dt/need):Math.max(0,p-dt*1.5);
+      fill.style.width=p*100+'%';
+      if(p>=1){ ok=true; S.obey++; S.roots=Math.min(9,S.roots+1); fruit(s.f,+1); S.spirit=clamp(S.spirit+5,0,100);
+        w.querySelector('#st').innerHTML=stairsSVG(k+1);
+        msg.innerHTML=`<span style="color:var(--leaf)">🌱 根向下扎深了一段。谦卑中的「${s.f}」结出来了。</span>`;
+        setTimeout(()=>stair(k+1),1300); }
+    };
+  });
+}
+function cross(){
+  setAct('第二章 · 十字架','现在，什么都不用做');
+  go(()=>{
+    const w=page(`<div class="eyebrow">第二章 · 最底一级</div><h2>且死在十字架上</h2>
+      <div class="story"><p>你走到了最低处。你的根扎到了最深处。</p><p><b>现在，什么都不用做。</b>不要按任何按钮，只要等。</p></div>
+      <div id="lift" style="display:grid;gap:12px"></div>`);
+    const lines=[['所以神将他升为至高，','2:9'],['又赐给他那超乎万名之上的名，','2:9'],['叫一切在天上的、地上的，和地底下的，因耶稣的名无不屈膝，','2:10'],['无不口称耶稣基督为主，使荣耀归与父神。','2:11']];
+    const box=w.querySelector('#lift'); let i=0;
+    const timer=setInterval(()=>{
+      if(i<lines.length){ const d=document.createElement('div'); d.className='verse rise'; d.innerHTML=`${lines[i][0]}<cite>腓立比书 ${lines[i][1]}</cite>`; box.appendChild(d); i++; }
+      else { clearInterval(timer);
+        const d=document.createElement('div'); d.className='rise'; d.style.cssText='display:grid;gap:12px';
+        d.innerHTML=`<p class="story" style="font-family:var(--serif)">高举是神做的，不是人爬上去的。果子也是一样：它是结出来的，不是做出来的。</p>
+          ${V('凡所行的，都不要发怨言、起争论，使你们无可指摘，诚实无伪……你们显在这世代中，好像明光照耀。','腓立比书 2:14-15')}
+          <button class="btn" id="nx">进入第三章</button>`;
+        box.appendChild(d); d.querySelector('#nx').onclick=act3; }
+    },2200);
+    return ()=>clearInterval(timer);
+  });
+}
+
+/* ================= 第三章 · 向着标竿直跑 ================= */
+const PACK=[
+  {n:'名校学历',p:'第八天受割礼'},
+  {n:'大公司职衔',p:'以色列族'},
+  {n:'豪宅区的地址',p:'便雅悯支派'},
+  {n:'教会服事年资',p:'希伯来人所生的希伯来人'},
+  {n:'专业资格与奖项',p:'按律法是法利赛人'},
+  {n:'「我比他们都热心」',p:'就热心说，我是逼迫教会的'},
+  {n:'自以为义',p:'就律法上的义说，我是无可指摘的',deep:true}
+];
+const GOOD=['真实','可敬','公义','清洁','可爱','有美名','德行','称赞'];
+const BAD=['比较','自怜','别人怎么看我','想当年','抱怨','嫉妒'];
+function act3(){
+  setAct('第三章 · 标竿','丢弃，然后直跑');
+  story({eyebrow:'第三章',title:'向着标竿直跑',
+    paras:['保罗曾经有一张很漂亮的履历：第八天受割礼、以色列族、便雅悯支派、法利赛人、热心、律法上的义无可指摘。','今天我们的履历换了名字：名校、大公司、豪宅区、服事年资……还有藏在最底下的一样：<b>自以为义</b>。','这些东西在背包里闪闪发亮，像宝物一样，把你压得跑不动。<b>长按「等候」</b>，圣灵的光会照出它们的真面目，然后你就可以点击丢弃。「自以为义」藏得最深，要先放下其他所有东西，还要圣灵的光完全亮起，才看得出来。','奔跑时，迎面会飞来各种念头。接住腓立比书 4:8 那些值得思念的，避开其他的。'],
+    verses:[['只是我先前以为与我有益的，我现在因基督都当作有损的……我为他已经丢弃万事，看作粪土，为要得着基督。','腓立比书 3:7-8']],
+    extra:'<p class="note">操作：点击画面上方或下方换跑道（或 ↑↓ 键）。背后有人叫你时，不要回头。</p>',
+    btn:'起跑',next:runner});
+}
+function runner(){
+  setAct('第三章 · 标竿','向着标竿直跑');
+  go(()=>{
+    const K=makeCanvas(), {ctx}=K;
+    const pack=PACK.map(x=>({...x,seen:false,gone:false}));
+    const packEl=document.createElement('div'); packEl.className='pack'; stage.appendChild(packEl);
+    const lookEl=document.createElement('div'); lookEl.className='lookback'; lookEl.hidden=true; stage.appendChild(lookEl);
+    const GOAL=4200; let dist=0,t=0,lane=1,ly=1,stun=0,spawn=.8,lookT=rnd(7,10),lookOpen=0,done=false;
+    const obs=[], pops=[];
+    $('#keys').innerHTML='点上/下半部或 ↑↓ 换跑道 · 长按「等候」照出包袱';
+    const renderPack=()=>{
+      packEl.innerHTML='<div class="label">背包里的「宝物」（被圣灵照出来的，才能丢弃）</div>'+pack.filter(x=>!x.gone).map((x,i)=>`<button class="item ${x.seen?'seen':''}" data-i="${pack.indexOf(x)}">${x.seen?x.n+'｜'+x.p:x.n}</button>`).join('');
+      packEl.querySelectorAll('.item.seen').forEach(b=>b.onclick=()=>{
+        const it=pack[+b.dataset.i]; it.gone=true; S.dropped++; S.obey++;
+        if(it.deep){ fruit('温柔',+1); fruit('节制',+1); toast('「不是有自己因律法而得的义，乃是有信基督的义。」腓立比书 3:9',4200); }
+        else toast(`丢弃「${it.n}」，看作粪土（3:8）`,1800);
+        renderPack();
+      });
+    };
+    renderPack();
+    const laneY=i=>K.H*(.22+i*.2);
+    const tap=e=>{ const r=K.cv.getBoundingClientRect(), y=e.clientY-r.top; if(y<laneY(lane)-10) lane=Math.max(0,lane-1); else if(y>laneY(lane)+10) lane=Math.min(2,lane+1); };
+    K.cv.addEventListener('pointerdown',tap);
+    const kd=e=>{ if(e.key==='ArrowUp') lane=Math.max(0,lane-1); if(e.key==='ArrowDown') lane=Math.min(2,lane+1); };
+    addEventListener('keydown',kd);
+    const showLook=()=>{
+      const back=pack.filter(x=>x.gone);
+      lookEl.innerHTML=`<div>身后有声音喊你：<br><b>「${back.length?'你丢掉的「'+pick(back).n+'」':'想想你以前'}……多风光啊！回头看看吧！」</b></div><button id="lb">回头看</button>`;
+      lookEl.hidden=false; lookOpen=4;
+      lookEl.querySelector('#lb').onclick=()=>{
+        lookEl.hidden=true; lookOpen=0; stun=1.5; S.flesh++;
+        const g=pack.filter(x=>x.gone); if(g.length){ const it=pick(g); it.gone=false; it.seen=false; S.dropped--; toast(`你回头了。「${it.n}」又回到你的背包里。`,2600); renderPack(); }
+        else toast('你回头了，脚步慢了下来。',2000);
+      };
+    };
+    sceneTick=dt=>{
+      if(done) return; t+=dt;
+      const W=K.W,H=K.H, px=W*.18;
+      const load=pack.filter(x=>!x.gone).length;
+      // 圣灵照明
+      if(S.waiting){ pack.forEach((x,i)=>{ if(x.gone||x.seen) return;
+        if(!x.deep && S.spirit>=12*(i+1)){ x.seen=true; renderPack(); pop(pops,px,laneY(lane)-40,'照出来了：'+x.n,C.lamp); }
+        if(x.deep && S.spirit>=98 && pack.every(y=>y.deep||y.gone)){ x.seen=true; renderPack(); toast('最深的一层被照出来了：自以为义',3000); } }); }
+      stun=Math.max(0,stun-dt);
+      const speed=280*(1-.085*load)*(S.waiting?.15:1)*(stun>0?.3:1);
+      dist+=speed*dt;
+      ly+=(lane-ly)*Math.min(1,dt*12);
+      // 回头
+      if(lookOpen>0){ lookOpen-=dt; if(lookOpen<=0){ lookEl.hidden=true; S.obey++; S.spirit=clamp(S.spirit+8,0,100); pop(pops,px,laneY(lane)-40,'忘记背后，努力面前',C.leaf); lookT=rnd(8,12);} }
+      else { lookT-=dt; if(lookT<=0) showLook(); }
+      // 念头
+      spawn-=dt;
+      if(spawn<=0 && dist<GOAL-300){ spawn=rnd(.7,1.2); const good=Math.random()<.55;
+        obs.push({lane:Math.floor(Math.random()*3),x:W+40,good,label:good?pick(GOOD):pick(BAD)}); }
+      for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; o.x-=(speed+60)*dt;
+        if(Math.abs(o.x-px)<22 && o.lane===lane){ obs.splice(i,1);
+          if(o.good){ const n=!S.thoughts.has(o.label); S.thoughts.add(o.label); pop(pops,px,laneY(lane)-34,(n?'✦ ':'')+o.label,C.lamp); }
+          else { stun=.9; S.sick=clamp(S.sick+4,0,100); pop(pops,px,laneY(lane)-34,o.label+'……绊了一下',C.germ); }
+          continue; }
+        if(o.x<-60) obs.splice(i,1); }
+      if(dist>=GOAL){ done=true; lookEl.hidden=true; return finishRun(pack); }
+      // ---- 画 ----
+      const g=ctx.createLinearGradient(0,0,W,0); g.addColorStop(0,'#141a2a'); g.addColorStop(1,'#232a3c'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+      // 标竿
+      const gx=W-40+(GOAL-dist)*.35;
+      if(gx<W+30){ ctx.strokeStyle=C.lamp; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(gx,laneY(0)-40); ctx.lineTo(gx,laneY(2)+30); ctx.stroke();
+        ctx.fillStyle=C.lamp; ctx.fillRect(gx,laneY(0)-40,26,16); }
+      for(let i=0;i<3;i++){ const y=laneY(i)+18; ctx.strokeStyle='rgba(166,169,159,.14)'; ctx.setLineDash([30,30]); ctx.lineDashOffset=dist%60; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+      ctx.setLineDash([]);
+      const font=FONT;
+      for(const o of obs){ const y=laneY(o.lane);
+        ctx.fillStyle=o.good?'rgba(242,193,78,.16)':'rgba(185,95,163,.25)'; ctx.strokeStyle=o.good?C.lamp:C.germ;
+        ctx.font=`500 14px ${font}`; const tw=ctx.measureText(o.label).width+16;
+        ctx.beginPath(); ctx.roundRect(o.x-tw/2,y-14,tw,26,13); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=o.good?C.lamp:'#e2a6d2'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.label,o.x,y); }
+      ctx.textBaseline='alphabetic';
+      const y=H*(.22+ly*.2);
+      drawTraveler(ctx,px,y,Math.min(7,load),t*(stun>0?.3:1.4),false);
+      if(S.waiting){ ctx.fillStyle='rgba(242,193,78,.08)'; ctx.fillRect(0,0,W,H); }
+      drawPops(ctx,pops,dt);
+      const pw=W-32; ctx.fillStyle=C.night2; ctx.fillRect(16,12,pw,4); ctx.fillStyle=C.lamp; ctx.fillRect(16,12,pw*Math.min(1,dist/GOAL),4);
+      ctx.fillStyle=C.muted; ctx.font='12px '+font; ctx.textAlign='left';
+      ctx.fillText(`思念 ${S.thoughts.size}/8 · 背包 ${load} 件`,16,32); ctx.textAlign='right'; ctx.fillText('标竿',W-16,32);
+    };
+    return ()=>{ K.off(); removeEventListener('keydown',kd); };
+  });
+}
+function finishRun(pack){
+  const left=pack.filter(x=>!x.gone).map(x=>x.n);
+  story({eyebrow:'第三章 · 完',title:'到了标竿',
+    paras:[left.length?`你到了。但背包里还背着：${left.join('、')}。没关系，保罗也说「我不是以为自己已经得着了」。`:'你到了，背包是空的。你从来没有跑得这么轻。',
+      `一路上你接住了 ${S.thoughts.size}/8 样值得思念的事：${[...S.thoughts].join('、')||'（还没有）'}。`],
+    verses:[['弟兄们，我不是以为自己已经得着了；我只有一件事，就是忘记背后，努力面前的，向着标竿直跑，要得神在基督耶稣里从上面召我来得的奖赏。','腓立比书 3:13-14'],['凡是真实的、可敬的、公义的、清洁的、可爱的、有美名的，若有什么德行，若有什么称赞，这些事你们都要思念。','腓立比书 4:8']],
+    btn:'第四章：回家',next:returnStart});
+}
+
+/* ================= 第四章 · 回程 ================= */
+function returnStart(){
+  setAct('第四章 · 回程','带着喜乐的信回家');
+  S.burdens=['忧虑','敌对','不同心']; S.sick=Math.min(S.sick,15); hud();
+  story({eyebrow:'第四章',title:'同一条路，不同的人',
+    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','这一次不一样了。在路上，<b>长按「等候」可以举起「平安」的盾</b>，病菌碰到就会消散；等候时病也会慢慢好转。每到一站，圣灵也会让你看见放下重担的路。'],
+    verses:[['所以我越发急速打发他去，叫你们再见他就可以喜乐，我也可以少些忧愁。','腓立比书 2:28'],['神所赐出人意外的平安，必在基督耶稣里保守你们的心怀意念。','腓立比书 4:7']],
+    extra:'<p class="note">「保守」原文是驻军守城的字：平安像卫兵一样，守着你的心。</p>',
+    btn:'出发',next:back1});
+}
+function back1(){
+  choice({eyebrow:'第四章 · 第一站',title:'忧虑',situation:'刚上路，你又开始想：回去以后，教会会怎样？她们还在吵吗？我能做什么？',
+    options:[
+      {kind:'flesh',text:'在脑子里一遍遍排练：回去以后要怎样说服每一个人。',fruit:'和平',reply:'石头又重了一点。'},
+      {kind:'flesh',text:'算了，走一步算一步，不去想了。',fruit:'和平',reply:'你把忧虑塞进了背包的更深处。'},
+      {kind:'spirit',text:'停下来，把每一件挂心的事都告诉神，一件一件，带着感谢。',fruit:'和平',burden:'-忧虑',reply:'「忧虑」这块石头放下了。你放下它，不是因为问题解决了，而是因为你把它交了出去。',verse:['应当一无挂虑，只要凡事借着祷告、祈求，和感谢，将你们所要的告诉神。','腓立比书 4:6']}
+    ],next:()=>journey('back',0,back2)});
+}
+function back2(){
+  choice({eyebrow:'第四章 · 第二站',title:'敌对',situation:'在布林迪西，你听说腓立比城里敌视信徒的人越来越多。',
+    options:[
+      {kind:'flesh',text:'心里开始计划反击。',fruit:'信实',reply:'你的拳头握紧了，心也跟着缩紧了。'},
+      {kind:'flesh',text:'害怕。也许低调一点，别让人知道我们是信徒。',fruit:'信实',reply:'惧怕像雾，让你看不清前面的路。'},
+      {kind:'spirit',text:'想起保罗在锁链中的样子：我们是天上的国民，不怕敌人的惊吓。',fruit:'信实',burden:'-敌对',reply:'「敌对」这块石头放下了。敌人还在，惧怕却不能再掌管你。',verse:['我们却是天上的国民，并且等候救主，就是主耶稣基督从天上降临。','腓立比书 3:20']}
+    ],next:()=>journey('back',1,back3)});
+}
+function back3(){
+  choice({eyebrow:'第四章 · 第三站',title:'不同心',situation:'腓立比就在前面了。你手里握着保罗的信，想起友阿爹和循都基。',
+    options:[
+      {kind:'flesh',text:'先去找有理的那一位，告诉她保罗是站在她那边的。',fruit:'仁爱',reply:'你差点把一封和好的信，用成了结党的武器。'},
+      {kind:'flesh',text:'当众宣读保罗的话，让她们两个下不了台。',fruit:'温柔',reply:'对的话，用错了方式。'},
+      {kind:'spirit',text:'分别去见她们，温柔地说：保罗劝我们在主里同心，我愿意陪你们一起走这一步。',fruit:'仁爱',burden:'-不同心',reply:'「不同心」这块石头放下了。你成了保罗说的「真实同负一轭的」。',verse:['我劝友阿爹和循都基要在主里同心。我也求你这真实同负一轭的，帮助这两个女人，因为她们在福音上曾与我一同劳苦。','腓立比书 4:2-3']}
+    ],next:()=>journey('back',2,ending)});
+}
+
+/* ================= 结局 ================= */
+function ending(){
+  setAct('腓立比','靠主常常喜乐');
+  if(!S.ended){ S.ended=true; S.burdens=[]; fruit('喜乐',+1); }
+  const total=FRUITS.reduce((a,f)=>a+Math.max(0,S.fruit[f]),0);
+  const ripe=FRUITS.filter(f=>S.fruit[f]>0).length;
+  const ratio=S.obey+S.flesh?Math.round(S.obey/(S.obey+S.flesh)*100):0;
+  go(()=>{
+    const w=page(`
+      <div class="eyebrow">终章 · 腓立比</div>
+      <h1>靠主常常喜乐</h1>
+      <div class="story" style="display:grid;gap:10px">
+        <p>主日，腓立比教会聚在吕底亚的家里。以巴弗提站起来，打开保罗的信。</p>
+        <p>读到「我劝友阿爹和循都基要在主里同心」的时候，屋子里很安静。然后，两位姊妹站了起来，走向对方。</p>
+      </div>
+      ${V('你们要靠主常常喜乐。我再说，你们要喜乐。当叫众人知道你们谦让的心。主已经近了。','腓立比书 4:4-5')}
+      <div class="bigtree">${treeSVG()}</div>
+      <div class="stats">
+        <div class="stat"><b>${S.roots}/9</b><span>根扎下的深度</span></div>
+        <div class="stat"><b>${ripe}/9</b><span>结出的果子</span></div>
+        <div class="stat"><b>${Math.round(S.waitSec)}秒</b><span>安静等候</span></div>
+        <div class="stat"><b>${ratio}%</b><span>顺着圣灵的选择</span></div>
+        <div class="stat"><b>${S.dropped}/7</b><span>放下的资历</span></div>
+        <div class="stat"><b>${S.thoughts.size}/8</b><span>接住的思念</span></div>
+      </div>
+      <p class="story" style="font-family:var(--serif)">${S.fought>6?`你一共「凭自己反击」了 ${S.fought} 次，每一次病菌都分成两个。`:''}果子不是做出来的，是结出来的。你让圣灵做了多少，就结出多少。</p>
+      ${V('我靠着那加给我力量的，凡事都能做。','腓立比书 4:13')}
+      <h2>小组分享</h2>
+      <ol class="q">
+        <li><b>去程：</b>你现在心里背着什么重担？你所在的群体里，有哪些「病菌」正在弥漫？</li>
+        <li><b>罗马：</b>保罗在锁链中怎样看见喜乐？在你最近的处境里，圣灵可能想让你看见什么？</li>
+        <li><b>阶梯：</b>九个「向下走」里，哪一个对你最难？为什么谦卑要花时间？</li>
+        <li><b>奔跑：</b>你的背包里，哪一样「资历」最难放下？你会被什么声音叫得回头？</li>
+        <li><b>回程：</b>有没有一段不同心的关系，你可以为它祷告，或者踏出一小步？</li>
+      </ol>
+      <div class="row"><button class="btn" id="again">再走一次</button><button class="btn ghost" id="nt">研经说明</button></div>`);
+    w.querySelector('#again').onclick=()=>location.reload();
+    w.querySelector('#nt').onclick=()=>story({eyebrow:'研经说明',title:'游戏背后的经文判断',paras:['1:15-17 的嫉妒纷争传道发生在罗马；同样的「结党」（ἐριθεία，1:17；2:3）也在腓立比教会里发作。','以巴弗提的病因经文没有交代，「病菌」是属灵寓意。','九种果子取自加拉太书 5:22-23。'],btn:'返回',next:ending});
+  });
+}
+
+/* ================= 启动 ================= */
+hud(); title(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>
