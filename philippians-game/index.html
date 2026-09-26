@@ -93,6 +93,23 @@ p{margin:0}
 .hold .fill{position:absolute;inset:0 auto 0 0;width:0;background:rgba(134,173,111,.35);pointer-events:none}
 .shake{animation:shake .4s}
 @keyframes shake{25%{transform:translateX(-6px)}50%{transform:translateX(6px)}75%{transform:translateX(-3px)}}
+.quake{animation:quake 1.1s cubic-bezier(.36,.07,.19,.97)}
+@keyframes quake{
+  0%,100%{transform:none}
+  8%{transform:translate(-22px,6px) rotate(-2.2deg)}
+  16%{transform:translate(20px,-8px) rotate(2deg)}
+  24%{transform:translate(-18px,10px) rotate(-1.8deg)}
+  32%{transform:translate(16px,-6px) rotate(1.6deg)}
+  44%{transform:translate(-12px,5px) rotate(-1.1deg)}
+  56%{transform:translate(9px,-4px) rotate(.8deg)}
+  70%{transform:translate(-5px,2px) rotate(-.4deg)}
+  85%{transform:translate(3px,-1px)}}
+.crack{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 50% 40%,rgba(224,100,90,.45),rgba(224,100,90,0) 70%);animation:crack 1.2s ease-out forwards;z-index:4}
+@keyframes crack{from{opacity:1}to{opacity:0}}
+.reflect{display:grid;gap:10px;min-height:1em}
+.reflect p{font-family:var(--serif);font-size:15.5px;line-height:1.85;color:var(--text);padding-left:12px;border-left:2px solid var(--leaf)}
+.reflect p.pray{color:var(--lamp);border-left-color:var(--lamp)}
+.holdtime{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rise{animation:rise 1.2s ease-out both}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
@@ -606,20 +623,20 @@ function romeCard(i){
 
 /* ================= 第二章 · 谦卑阶梯 ================= */
 const STEPS=[
-  {ph:'他本有神的形像',f:'仁爱',sit:'同工会上，你的方案被否决了，大家选了另一位同工的方案。',up:'私下找人拉票，下次再翻案。',down:'真心帮助对方的方案做成。'},
-  {ph:'不以自己与神同等为强夺的',f:'喜乐',sit:'活动办得很成功。台上大家感谢了别人，你的付出没有人提。',up:'找机会轻轻提一句：其实那部分是我做的。',down:'为对方被看见而真心欢喜。'},
-  {ph:'反倒虚己',f:'和平',sit:'友阿爹和循都基都来找你，要你评评理。',up:'站到有理的一边，壮大这一边的声势。',down:'不结党。先分别聆听，再邀请她们一起祷告。'},
-  {ph:'取了奴仆的形像',f:'忍耐',sit:'新来的同工做事很慢，一件事教了三次还是出错。',up:'拿过来自己做，又快又好。',down:'陪着他慢慢学。'},
-  {ph:'成为人的样式',f:'恩慈',sit:'曾经当众批评过你的人生病住院了。',up:'心里暗暗说：这就是报应。',down:'煮一锅汤，送到他家门口。'},
-  {ph:'既有人的样子，就自己卑微',f:'良善',sit:'事情出错了，你可以把责任推给一个不在场的同工。',up:'顺水推舟，反正他也有份。',down:'承认是自己的疏忽。'},
-  {ph:'存心顺服',f:'信实',sit:'你答应了一件小事，又闷又没有人看见。',up:'找个理由推掉，反正没人会发现。',down:'默默把它做完。'},
-  {ph:'以至于死',f:'温柔',sit:'有人在群组里误会你，说了很难听的话。',up:'写一篇长文，逐条反驳。',down:'私下温和地解释，不求赢。'},
-  {ph:'且死在十字架上',f:'节制',sit:'有一个在众人面前显出你恩赐与资历的机会。',up:'抓住机会，好好表现。',down:'把机会让给一位更需要被建立的人。'}
+  {ph:'他本有神的形像',f:'仁爱',in:['「我的方案明明比较好。」这句话在心里转了很多遍。','他本有神的形像，却没有抓住不放。','如果对方的方案成功了，你会真心高兴吗？','主啊，教我看别人比自己强。'],sit:'同工会上，你的方案被否决了，大家选了另一位同工的方案。',up:'私下找人拉票，下次再翻案。',down:'真心帮助对方的方案做成。'},
+  {ph:'不以自己与神同等为强夺的',f:'喜乐',in:['被忽略的感觉，像一根小刺，扎在心里。','他与神同等，却不以为那是必须抓住的。','你做这件事，是为了被看见，还是为了这件事本身？','主啊，让我在没有人知道的地方，也能喜乐。'],sit:'活动办得很成功。台上大家感谢了别人，你的付出没有人提。',up:'找机会轻轻提一句：其实那部分是我做的。',down:'为对方被看见而真心欢喜。'},
+  {ph:'反倒虚己',f:'和平',in:['说实话，你心里早已经站了一边。','他反倒虚己，把自己倒空。','先放下「谁对谁错」，你听得见她们各自的伤吗？','主啊，使我不结党，只做使人和睦的人。'],sit:'友阿爹和循都基都来找你，要你评评理。',up:'站到有理的一边，壮大这一边的声势。',down:'不结党。先分别聆听，再邀请她们一起祷告。'},
+  {ph:'取了奴仆的形像',f:'忍耐',in:['自己做，五分钟就好；陪他做，要一个下午。','他取了奴仆的形像。奴仆的时间，不属于自己。','你的效率和他的成长，哪一样更重要？','主啊，把你的忍耐借给我。'],sit:'新来的同工做事很慢，一件事教了三次还是出错。',up:'拿过来自己做，又快又好。',down:'陪着他慢慢学。'},
+  {ph:'成为人的样式',f:'恩慈',in:['他说过的那些话，你到今天还记得一字不差。','他成为人的样式，走进伤害他的人中间。','如果那锅汤被拒绝了，你还愿意再煮一次吗？','主啊，你怎样恩待我，也让我这样恩待人。'],sit:'曾经当众批评过你的人生病住院了。',up:'心里暗暗说：这就是报应。',down:'煮一锅汤，送到他家门口。'},
+  {ph:'既有人的样子，就自己卑微',f:'良善',in:['没有人会发现的。推一推，就过去了。','他既有人的样子，就自己卑微。','承认之后，你最怕失去的是什么？','主啊，我宁可在人面前低一点，也不要在你面前不真实。'],sit:'事情出错了，你可以把责任推给一个不在场的同工。',up:'顺水推舟，反正他也有份。',down:'承认是自己的疏忽。'},
+  {ph:'存心顺服',f:'信实',in:['这件事太小了，小到没有人会记得。','他存心顺服，那不是做给人看的顺服。','在没有观众的时候，你是谁？','主啊，让我在最小的事上忠心。'],sit:'你答应了一件小事，又闷又没有人看见。',up:'找个理由推掉，反正没人会发现。',down:'默默把它做完。'},
+  {ph:'以至于死',f:'温柔',in:['你已经在心里写好了十条反驳。','他顺服以至于死，被骂的时候不还口。','你要的是被理解，还是要赢？','主啊，让我谦让的心叫众人知道（4:5）。'],sit:'有人在群组里误会你，说了很难听的话。',up:'写一篇长文，逐条反驳。',down:'私下温和地解释，不求赢。'},
+  {ph:'且死在十字架上',f:'节制',in:['这是你等了很久的机会。','他且死在十字架上。那是最没有面子的死法。','如果从此没有人知道你有这个恩赐，你还可以吗？','主啊，我放手。你要高举谁，就高举谁。'],sit:'有一个在众人面前显出你恩赐与资历的机会。',up:'抓住机会，好好表现。',down:'把机会让给一位更需要被建立的人。'}
 ];
 function act2(){
   setAct('第二章 · 基督的心','谦卑阶梯');
   story({eyebrow:'第二章',title:'向下扎根，向上结果',
-    paras:['果子长在树上，看起来是向上结出来的。可是一棵树能结多少果子，要看它的根向下扎得多深。','这一章，你要跟着基督的路<b>向下走</b>九级阶梯。每走一级，根就扎深一段，一种果子就在谦卑中结出来。','「向上抓」只要一按就行，很快；「向下走」要<b>按住不放</b>，要花时间。谦卑本来就是这样。'],
+    paras:['果子长在树上，看起来是向上结出来的。可是一棵树能结多少果子，要看它的根向下扎得多深。','这一章，你要跟着基督的路<b>向下走</b>九级阶梯。每走一级，根就扎深一段，一种果子就在谦卑中结出来。','「向上抓」点一下就行，很快，可是阶梯会剧烈摇晃。「向下走」要<b>按住不放大约二十秒</b>。按住的时候，心里会浮现几句话，慢慢读，慢慢想。累了可以放手休息，已经走下的不会消失。谦卑本来就要花时间。'],
     verses:[['凡事不可结党，不可贪图虚浮的荣耀；只要存心谦卑，各人看别人比自己强。各人不要单顾自己的事，也要顾别人的事。你们当以基督耶稣的心为心。','腓立比书 2:3-5']],
     btn:'走下第一级',next:()=>stair(0)});
 }
@@ -627,7 +644,7 @@ function stairsSVG(k){
   const rows=STEPS.map((st,i)=>{const x=i*14,y=14+i*30,on=i<k,cur=i===k;
     return `<rect x="${x}" y="${y}" width="${200-x}" height="22" rx="3" fill="${on?'#2c3d2c':C.night2}" stroke="${on?C.leaf:cur?C.lamp:C.line}"/>
       <text x="${x+8}" y="${y+15}" font-size="10" fill="${on||cur?C.text:C.muted}" font-family="Noto Serif SC,serif">${st.ph}</text>`}).join('');
-  const dot=k<9?`<circle cx="${k*14+10}" cy="${14+k*30-5}" r="4.5" fill="${C.lamp}"/>`
+  const dot=k<9?`<circle id="fig" cx="${k*14+10}" cy="${14+k*30-5}" r="4.5" fill="${C.lamp}"/>`
     :`<g stroke="${C.lamp}" stroke-width="3"><line x1="160" y1="288" x2="160" y2="322"/><line x1="148" y1="298" x2="172" y2="298"/></g><circle cx="140" cy="318" r="4.5" fill="${C.lamp}"/>`;
   return `<svg viewBox="0 0 200 326" role="img" aria-label="谦卑阶梯：第 ${Math.min(k,9)}/9 级">${rows}${dot}</svg>`;
 }
@@ -637,6 +654,7 @@ function stair(k){
   setAct('第二章 · 谦卑阶梯',`第 ${k+1}/9 级 · 谦卑中的${s.f}`);
   go(()=>{
     decay=false;
+    const HOLD=20;
     const w=page(`<div class="ladder"><div class="stairs" id="st">${stairsSVG(k)}</div>
       <div style="display:grid;gap:14px">
         <div class="eyebrow">第 ${k+1} 级 · ${s.ph}</div>
@@ -646,29 +664,42 @@ function stair(k){
           <button class="opt" id="up"><span class="tag">↑ 向上抓 · 点一下</span>${s.up}</button>
           <button class="opt spirit hold" id="down"><span class="fill"></span><span class="tag">↓ 向下走 · 按住不放</span>${s.down}</button>
         </div>
+        <div class="holdtime" id="ht">按住「向下走」，慢慢往下。</div>
+        <div class="reflect" id="rf"></div>
         <div id="msg" class="note"></div>
       </div></div>`);
-    const up=w.querySelector('#up'), down=w.querySelector('#down'), fill=down.querySelector('.fill'), msg=w.querySelector('#msg');
+    const up=w.querySelector('#up'), down=w.querySelector('#down'), fill=down.querySelector('.fill'), msg=w.querySelector('#msg'), rf=w.querySelector('#rf'), ht=w.querySelector('#ht');
+    let holding=false, p=0, ok=false, shown=0, lock=false;
     up.onclick=()=>{
-      S.flesh++; fruit(s.f,-1);
-      const st=w.querySelector('#st'); st.classList.remove('shake'); void st.offsetWidth; st.classList.add('shake');
-      msg.innerHTML='<span style="color:#e2a6d2">阶梯晃了一下。这是「强夺」，不是基督的心（2:6）。「'+s.f+'」枯萎了。再选一次。</span>';
+      if(lock||ok) return; lock=true; setTimeout(()=>lock=false,1100);
+      S.flesh++; fruit(s.f,-1); p=p*.5;
+      const app=$('#app'); app.classList.remove('quake'); void app.offsetWidth; app.classList.add('quake');
+      const fl=document.createElement('div'); fl.className='crack'; stage.appendChild(fl); setTimeout(()=>fl.remove(),1300);
+      w.querySelectorAll('#st rect').forEach(r=>{ const bb=r.getBBox(); r.setAttribute('transform',`rotate(${rnd(-9,9)} ${bb.x+bb.width/2} ${bb.y+bb.height/2}) translate(${rnd(-6,6)} ${rnd(-4,4)})`); });
+      setTimeout(()=>w.querySelectorAll('#st rect').forEach(r=>r.removeAttribute('transform')),1100);
+      try{ navigator.vibrate?.([120,60,200,60,120]); }catch(e){}
+      msg.innerHTML='<span style="color:#e2a6d2">整道阶梯剧烈摇晃，差点把你甩下去。这是「强夺」，不是基督的心（2:6）。「'+s.f+'」枯萎了，刚才向下走的路也退回了一半。</span>';
     };
-    let holding=false, p=0, ok=false;
-    const need=S.spirit>=30?0.9:1.6;
-    down.addEventListener('pointerdown',e=>{e.preventDefault();holding=true});
-    ['pointerup','pointerleave','pointercancel'].forEach(ev=>down.addEventListener(ev,()=>{holding=false}));
+    down.addEventListener('pointerdown',e=>{e.preventDefault();down.setPointerCapture?.(e.pointerId);holding=true;if(!ok) msg.innerHTML='';});
+    ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>down.addEventListener(ev,()=>{holding=false}));
+    down.addEventListener('contextmenu',e=>e.preventDefault());
     down.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') { e.preventDefault(); holding=true; } });
     down.addEventListener('keyup',()=>{holding=false});
-    msg.textContent=S.spirit>=30?'圣灵加力：向下走的路变得容易了一些。':'提示：先「等候」，让圣灵加力，向下走会快一些。';
+    const fig=()=>w.querySelector('#fig');
     sceneTick=dt=>{
       if(ok) return;
-      p=holding?Math.min(1,p+dt/need):Math.max(0,p-dt*1.5);
+      if(holding) p=Math.min(1,p+dt/HOLD);
       fill.style.width=p*100+'%';
-      if(p>=1){ ok=true; S.obey++; S.roots=Math.min(9,S.roots+1); fruit(s.f,+1); S.spirit=clamp(S.spirit+5,0,100);
+      const f=fig(); if(f){ f.setAttribute('cx',k*14+10+p*14); f.setAttribute('cy',14+k*30-5+p*30); }
+      const left=Math.ceil(HOLD*(1-p));
+      ht.textContent=holding?`向下走……还有 ${left} 秒`:(p>0?`你停下来了。准备好了，再按住继续（还有 ${left} 秒）。`:'按住「向下走」，慢慢往下。');
+      const want=Math.min(s.in.length,Math.floor(p*HOLD/5)+(p>0?1:0));
+      while(shown<want){ const el=document.createElement('p'); el.className='rise'+(shown===s.in.length-1?' pray':''); el.textContent=s.in[shown]; rf.appendChild(el); shown++; }
+      if(p>=1){ ok=true; holding=false; S.obey++; S.roots=Math.min(9,S.roots+1); fruit(s.f,+1); S.spirit=clamp(S.spirit+5,0,100);
+        up.disabled=true; down.disabled=true; ht.textContent='';
         w.querySelector('#st').innerHTML=stairsSVG(k+1);
-        msg.innerHTML=`<span style="color:var(--leaf)">🌱 根向下扎深了一段。谦卑中的「${s.f}」结出来了。</span>`;
-        setTimeout(()=>stair(k+1),1300); }
+        msg.innerHTML=`<div class="rise" style="display:grid;gap:12px"><span style="color:var(--leaf)">🌱 根向下扎深了一段。谦卑中的「${s.f}」结出来了。</span><button class="btn" id="nx">${k<8?'再往下一级':'走到最底'}</button></div>`;
+        msg.querySelector('#nx').onclick=()=>stair(k+1); }
     };
   });
 }
