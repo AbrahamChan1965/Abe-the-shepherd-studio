@@ -170,7 +170,7 @@ ol.q{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:14.5px}
   <main id="stage"><div id="toast"></div></main>
   <footer id="ctrl">
     <div class="keys" id="keys">长按「等候」安静祷告，圣灵的光会亮起来。</div>
-    <button id="fightBtn" hidden>凭自己反击</button>
+    <button id="fightBtn" hidden>⚔ 争战</button>
     <button id="waitBtn" class="locked" aria-label="长按等候">🕊 等候</button>
   </footer>
 </div>
@@ -191,7 +191,7 @@ const S={
   spirit:0, sick:0, unlocked:false, waiting:false,
   fruit:Object.fromEntries(FRUITS.map(f=>[f,0])),
   roots:0, obey:0, flesh:0, waitSec:0,
-  burdens:[], dropped:0, thoughts:new Set(), fought:0, virtues:[], rotted:[]
+  burdens:[], dropped:0, thoughts:new Set(), kills:0, infect:0, oil:0, supplyGot:0, virtues:[], rotted:[]
 };
 const C={lamp:'#f2c14e',leaf:'#86ad6f',germ:'#b95fa3',fever:'#e0645a',text:'#ebe5d6',muted:'#a6a99f',earth:'#6b5a45',night:'#111726',night2:'#1a2235',line:'#34405a'};
 const $=s=>document.querySelector(s);
@@ -368,69 +368,104 @@ function drawPops(ctx,list,dt){
 }
 
 /* ================= 旅程（去程 / 回程） ================= */
+/* wave: 病菌墙间隔（秒）；rate: 零散病菌密度；三关都躲不过，只能争战 */
 const LEGS={
   out:[
-    {name:'腓立比 → 帖撒罗尼迦',sub:'埃格那提亚大道',dist:2200,rate:.85,types:['结党','纷争','怨言','不同心']},
-    {name:'横渡亚得里亚海',sub:'底拉古 → 布林迪西',dist:2200,rate:1.15,types:['嫉妒','纷争','结党','敌对','怨言'],sea:true},
-    {name:'亚壁古道 → 罗马',sub:'病得几乎要死（2:27）',dist:1900,rate:1.5,types:['嫉妒','结党','纷争','怨言','虚荣','忧虑'],fever:true}
+    {name:'腓立比 → 帖撒罗尼迦',sub:'埃格那提亚大道',dist:2300,rate:.7,wave:5.5,types:['结党','纷争','怨言','不同心']},
+    {name:'横渡亚得里亚海',sub:'底拉古 → 布林迪西',dist:2300,rate:.95,wave:4.5,types:['嫉妒','纷争','结党','敌对','怨言'],sea:true},
+    {name:'亚壁古道 → 罗马',sub:'病得几乎要死（2:27）',dist:2100,rate:1.2,wave:3.6,types:['嫉妒','结党','纷争','怨言','虚荣','忧虑'],fever:true}
   ],
   back:[
-    {name:'罗马 → 亚壁古道',sub:'回家的路',dist:2300,rate:1.1,types:['忧虑','怨言','纷争']},
-    {name:'横渡亚得里亚海',sub:'布林迪西 → 底拉古',dist:2300,rate:1.3,types:['敌对','嫉妒','纷争','结党'],sea:true},
-    {name:'埃格那提亚大道 → 腓立比',sub:'带着一封喜乐的信',dist:2500,rate:1.5,types:['结党','不同心','怨言','嫉妒','虚荣']}
+    {name:'罗马 → 亚壁古道',sub:'回家的路',dist:2300,rate:.8,wave:5,types:['忧虑','怨言','纷争']},
+    {name:'横渡亚得里亚海',sub:'布林迪西 → 底拉古',dist:2300,rate:1,wave:4.3,types:['敌对','嫉妒','纷争','结党'],sea:true},
+    {name:'埃格那提亚大道 → 腓立比',sub:'带着一封喜乐的信',dist:2500,rate:1.2,wave:3.8,types:['结党','不同心','怨言','嫉妒','虚荣']}
   ]
 };
+function drawSupply(ctx,it){
+  ctx.save(); ctx.translate(it.x,it.y);
+  ctx.shadowColor=it.kind==='oil'?'rgba(242,193,78,.8)':'rgba(140,200,235,.8)'; ctx.shadowBlur=14;
+  if(it.kind==='oil'){ // 油瓶
+    ctx.fillStyle='#d9a93a'; ctx.beginPath(); ctx.ellipse(0,4,10,11,0,0,Math.PI*2); ctx.fill();
+    ctx.fillRect(-3,-12,6,8); ctx.fillStyle='#fff3c4'; ctx.fillRect(-4,-14,8,3);
+  } else { // 水滴
+    ctx.fillStyle='#8cc8eb'; ctx.beginPath(); ctx.moveTo(0,-14); ctx.quadraticCurveTo(12,2,0,12); ctx.quadraticCurveTo(-12,2,0,-14); ctx.fill();
+  }
+  ctx.shadowBlur=0; ctx.fillStyle=C.text; ctx.font='11px '+FONT; ctx.textAlign='center'; ctx.fillText(it.kind==='oil'?'油':'水',0,28);
+  ctx.restore();
+}
 function journey(mode,idx,next){
   go(()=>{
     const L=LEGS[mode][idx], back=mode==='back';
     setAct(L.name,L.sub);
     const K=makeCanvas(), {ctx}=K;
-    const germs=[], pops=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
-    let dist=0, t=0, spawn=0, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
+    const germs=[], items=[], pops=[], slashes=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
+    let dist=0, t=0, spawn=1, wave=2.2, supply=2.5, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
     const orbs=back?S.virtues.filter(v=>!v.rotten):[];
-    $('#fightBtn').hidden=false;
-    $('#keys').innerHTML=back
-      ?'拖动/↑↓ 躲避病菌 · 长按「等候」举起平安的盾'
-      :'拖动/↑↓ 躲避病菌 · 病菌太多？试试「凭自己反击」';
-    if(idx===0) toast(back?'同样的路，同样的病菌。但这一次，你学会了等候。':'结党、嫉妒、纷争、怨言……像病菌一样弥漫在路上。',3200);
-    const move=e=>{ const r=K.cv.getBoundingClientRect(); ty=clamp(e.clientY-r.top,40,K.H-30); };
-    K.cv.addEventListener('pointermove',move); K.cv.addEventListener('pointerdown',move);
+    const fb=$('#fightBtn'); fb.hidden=false; fb.textContent='⚔ 争战';
+    $('#keys').innerHTML=(back?'长按「等候」举起平安的盾 · ':'')+'点病菌或按「争战」（F 键）击碎它 · 拖动 / ↑↓ 移动，接住油和水';
+    if(idx===0) toast(back?'同样的路，同样的病菌，一样躲不过。':'结党、嫉妒、纷争、怨言……一波一波迎面而来，躲不过，只能争战。',3400);
     const keys={};
-    const kd=e=>{keys[e.key]=true}, ku=e=>{keys[e.key]=false};
+    const kd=e=>{keys[e.key]=true; if(e.key==='f'||e.key==='F'||e.key==='ArrowRight') strike();}, ku=e=>{keys[e.key]=false};
     addEventListener('keydown',kd); addEventListener('keyup',ku);
-    const fight=()=>{
-      if(cool>0) return; cool=.35;
+    const reach=()=>K.W*.2+Math.max(240,K.W*.5);
+    function kill(g){
+      const px=K.W*.2; germs.splice(germs.indexOf(g),1);
+      const cost=(back?3.5:4.5)*(1-S.oil/160);
+      S.sick=clamp(S.sick+cost,0,100); S.infect+=cost; S.kills++; S.oil=Math.max(0,S.oil-4);
+      slashes.push({x1:px+12,y1:py-6,x2:g.x,y2:g.y,life:.25});
+      pop(pops,g.x,g.y-g.r-4,'「'+g.label+'」碎了 · 沾染',S.oil>20?C.lamp:'#e2a6d2');
+    }
+    function strike(target){
+      if(cool>0||done) return; cool=.22;
       const px=K.W*.2;
-      const g=germs.filter(g=>g.x>px&&g.x<px+300).sort((a,b)=>a.x-b.x)[0];
-      S.fought++; S.flesh++; if(S.unlocked) S.spirit=clamp(S.spirit-5,0,100);
-      if(!g){ pop(pops,px+40,py-30,'扑了个空',C.muted); return; }
-      germs.splice(germs.indexOf(g),1);
-      for(const s of [-1,1]) germs.push({x:g.x,y:clamp(g.y+s*26,40,K.H-30),r:Math.max(13,g.r*.85),label:g.label,vx:g.vx*1.1,vy:s*40,ph:0,w:g.w});
-      pop(pops,g.x,g.y-g.r-6,'相咬相吞，反而分成两个',C.germ);
-      if(S.fought===1) toast('「你们要谨慎，若相咬相吞，只怕要彼此消灭了。」加拉太书 5:15',3600);
-    };
-    $('#fightBtn').onclick=fight;
-    const fk=e=>{ if(e.key==='f'||e.key==='F') fight(); }; addEventListener('keydown',fk);
+      const g=target||germs.filter(g=>g.x>px-10&&g.x<reach()).sort((a,b)=>Math.hypot(a.x-px,a.y-py)-Math.hypot(b.x-px,b.y-py))[0];
+      if(!g){ pop(pops,px+40,py-30,'前面暂时没有病菌',C.muted); return; }
+      kill(g);
+    }
+    fb.onclick=()=>strike();
+    const down=e=>{ const r=K.cv.getBoundingClientRect(), x=e.clientX-r.left, y=e.clientY-r.top;
+      const g=germs.find(g=>Math.hypot(g.x-x,g.y-y)<g.r+14 && g.x<reach());
+      if(g) strike(g); else ty=clamp(y,40,K.H-30); };
+    const move=e=>{ if(e.pointerType==='mouse'||e.buttons){ const r=K.cv.getBoundingClientRect(); ty=clamp(e.clientY-r.top,40,K.H-30); } };
+    K.cv.addEventListener('pointerdown',down); K.cv.addEventListener('pointermove',move);
 
     sceneTick=dt=>{
       if(done) return; t+=dt; cool-=dt;
-      const W=K.W,H=K.H, px=W*.2;
+      const W=K.W,H=K.H, px=W*.2, prog=dist/L.dist;
       if(keys.ArrowUp) ty=clamp(ty-260*dt,40,H-30);
       if(keys.ArrowDown) ty=clamp(ty+260*dt,40,H-30);
       const heavy=S.burdens.length;
       py+=(ty-py)*Math.min(1,dt*7/(1+heavy*.5));
       const shield=back&&S.waiting&&S.spirit>2;
-      const speed=150*(1-.1*heavy)*(S.waiting?.3:1);
+      const speed=150*(1-.1*heavy)*(1-S.sick/230)*(S.waiting?.3:1);
       dist+=speed*dt;
       // 病
-      if(!back){ S.sick+=heavy*.5*dt+(L.fever?2.4*dt:0); if(!L.fever) S.sick=Math.min(S.sick,90); }
-      else if(S.waiting) S.sick=Math.max(0,S.sick-4*dt);
-      // 生成病菌
+      if(!back){ S.sick+=heavy*.3*dt+(L.fever?.6*dt:0); S.sick=Math.min(S.sick,L.fever?99:90); }
+      else { if(S.waiting) S.sick=Math.max(0,S.sick-4*dt);
+        if(S.sick>=95){ S.sick=95; if(!capped){ capped=true; toast('病菌还在你身上，可是你还走得动。',3000); } } }
+      // 病菌墙：一波比一波厚
+      wave-=dt;
+      if(wave<=0 && dist<L.dist-250){ wave=L.wave*(1-prog*.35);
+        const cols=idx>=1&&prog>.45?2:1, gap=46;
+        for(let c=0;c<cols;c++) for(let y=46;y<H-20;y+=gap)
+          germs.push({x:W+30+c*48,y:y+rnd(-4,4)+(c?gap/2:0),r:20,label:pick(L.types),vx:-(speed*.9+40),vy:0,ph:Math.random()*6,w:rnd(.8,1.6),wall:true}); }
+      // 零散病菌
       spawn-=dt;
-      if(spawn<=0 && dist<L.dist-200){ spawn=rnd(.55,1.25)/L.rate;
-        germs.push({x:W+30,y:rnd(50,H-40),r:rnd(17,25),label:pick(L.types),vx:-rnd(60,130)-speed*.6,vy:0,ph:Math.random()*6,w:rnd(1,2.5)}); }
+      if(spawn<=0 && dist<L.dist-250){ spawn=rnd(.7,1.4)/(L.rate*(1+prog*.6));
+        germs.push({x:W+30,y:rnd(50,H-40),r:rnd(17,24),label:pick(L.types),vx:-rnd(60,120)-speed*.6,vy:0,ph:Math.random()*6,w:rnd(1,2.5)}); }
+      // 圣灵的供应：油和水
+      supply-=dt;
+      if(supply<=0 && dist<L.dist-200){ supply=rnd(2.2,3.6);
+        items.push({kind:Math.random()<.5?'oil':'water',x:W+20,y:rnd(60,H-50),ph:Math.random()*6}); }
+      for(let i=items.length-1;i>=0;i--){ const it=items[i]; it.x-=(speed*.8+50)*dt; it.y+=Math.sin(t*2+it.ph)*14*dt;
+        if(Math.hypot(it.x-px,it.y-py)<28){ items.splice(i,1); S.supplyGot++;
+          if(it.kind==='oil'){ S.oil=Math.min(100,S.oil+30); pop(pops,px,py-40,'油：得着力量，争战时沾染得少',C.lamp); }
+          else { S.sick=Math.max(0,S.sick-9); pop(pops,px,py-40,'水：解渴退烧','#8cc8eb'); }
+          if(S.supplyGot===1) toast('「借着……耶稣基督之灵的帮助」（1:19）。「帮助」原文是供应、补给。',4200);
+          continue; }
+        if(it.x<-30) items.splice(i,1); }
       for(let i=germs.length-1;i>=0;i--){ const g=germs[i];
-        g.x+=g.vx*dt; g.vy*=.95; g.y+=(g.vy+Math.sin(t*g.w+g.ph)*18)*dt; g.ph+=dt*.6;
+        g.x+=g.vx*dt; g.vy*=.95; g.y+=(g.vy+(g.wall?Math.sin(t*g.w+g.ph)*4:Math.sin(t*g.w+g.ph)*18))*dt; g.ph+=dt*.6;
         const d=Math.hypot(g.x-px,g.y-py);
         if(shield && d<g.r+40){ germs.splice(i,1); S.spirit=clamp(S.spirit-7,0,100); pop(pops,g.x,g.y,'平安保守',C.lamp); continue; }
         const o=orbs.find(o=>!o.rotten&&Math.hypot(g.x-o.x,g.y-o.y)<g.r+13);
@@ -441,20 +476,15 @@ function journey(mode,idx,next){
             germs.push({x:W+30,y:rnd(50,H-40),r:22,label:bad,vx:-rnd(70,110)-speed*.6,vy:0,ph:0,w:1.5}); }
           else pop(pops,o.x,o.y-16,`「${o.name}」挡住了，却也染上了`,'#e2a6d2');
           continue; }
-        if(d<g.r+14){ germs.splice(i,1); S.sick=clamp(S.sick+(back?7:9),0,100); flash=.35; pop(pops,px,py-34,'染上「'+g.label+'」',C.fever); continue; }
+        if(d<g.r+14){ germs.splice(i,1); const hit=back?7:9; S.sick=clamp(S.sick+hit,0,back?95:(L.fever?99:90)); S.infect+=hit; flash=.35; pop(pops,px,py-34,'冲过去，染上了「'+g.label+'」',C.fever); continue; }
         if(g.x<-40) germs.splice(i,1);
-      }
-      // 结局判定
-      if(S.sick>=100){
-        if(!back){ done=true; return next('collapse'); }
-        S.sick=95; if(!capped){ capped=true; toast('病菌还在你身上，可是你还走得动。',3000); }
       }
       if(dist>=L.dist){ done=true; return next(); }
 
       // ---- 画 ----
       const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0c1120'); sky.addColorStop(1,L.sea?'#15314a':'#2a2a3a');
       ctx.fillStyle=sky; ctx.fillRect(0,0,W,H);
-      for(const s of stars){ ctx.fillStyle=`rgba(235,229,214,${.25+s[2]*.5})`; ctx.fillRect(((s[0]*W-dist*.02)%W+W)%W,s[1]*H,1.5,1.5); }
+      for(const st of stars){ ctx.fillStyle=`rgba(235,229,214,${.25+st[2]*.5})`; ctx.fillRect(((st[0]*W-dist*.02)%W+W)%W,st[1]*H,1.5,1.5); }
       if(L.sea){
         ctx.strokeStyle='rgba(120,170,200,.25)'; ctx.lineWidth=1.5;
         for(let r=0;r<9;r++){ const y=H*.25+r*H*.085; ctx.beginPath();
@@ -466,12 +496,14 @@ function journey(mode,idx,next){
         ctx.strokeStyle='rgba(166,169,159,.12)'; ctx.setLineDash([22,26]); ctx.lineDashOffset=dist%48;
         for(const f of [.5,.75]){ ctx.beginPath(); ctx.moveTo(W,H*f); ctx.lineTo(0,H*f); ctx.stroke(); }
         ctx.setLineDash([]);
-        // 里程碑
         const m=(W+80)-(dist*1.0)%(W+160);
         ctx.fillStyle='#4a4f5c'; ctx.fillRect(m,H*.34-26,10,26);
       }
       if(S.sick>60){ ctx.fillStyle=`rgba(224,100,90,${(S.sick-60)/400})`; ctx.fillRect(0,0,W,H); }
+      items.forEach(it=>drawSupply(ctx,it));
       germs.forEach(g=>drawGerm(ctx,g));
+      for(let i=slashes.length-1;i>=0;i--){ const sl=slashes[i]; sl.life-=dt; if(sl.life<=0){ slashes.splice(i,1); continue; }
+        ctx.strokeStyle=`rgba(235,229,214,${sl.life*4})`; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(sl.x1,sl.y1); ctx.lineTo(sl.x2,sl.y2); ctx.stroke(); }
       if(shield){ ctx.save(); ctx.globalAlpha=.25+S.spirit/300; ctx.strokeStyle=C.lamp; ctx.fillStyle='rgba(242,193,78,.12)'; ctx.lineWidth=2.5;
         ctx.beginPath(); ctx.arc(px,py-4,40,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
         ctx.fillStyle=C.lamp; ctx.font='12px '+FONT; ctx.textAlign='center'; ctx.fillText('平安',px,py-48); }
@@ -480,16 +512,20 @@ function journey(mode,idx,next){
         ctx.fillStyle=o.hp>1?'rgba(242,193,78,.2)':'rgba(185,95,163,.3)'; ctx.strokeStyle=o.hp>1?C.lamp:C.germ;
         ctx.beginPath(); ctx.arc(o.x,o.y,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
         ctx.fillStyle=o.hp>1?C.lamp:'#e2a6d2'; ctx.font='11px '+FONT; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.name.slice(0,2),o.x,o.y+1); ctx.textBaseline='alphabetic'; });
-      drawTraveler(ctx,px,py,heavy,t,L.sea);
+      // 病越重，身子越弯，最后是爬
+      ctx.save(); ctx.translate(px,py); ctx.rotate(S.sick>70?(S.sick-70)/30*1.1:0); ctx.translate(-px,-py);
+      drawTraveler(ctx,px,py+(S.sick>85?8:0),heavy,t*(1-S.sick/150),L.sea); ctx.restore();
       if(flash>0){ flash-=dt; ctx.fillStyle=`rgba(224,100,90,${flash})`; ctx.fillRect(0,0,W,H); }
       drawPops(ctx,pops,dt);
-      // 进度
+      // 进度与油
       const pw=W-32; ctx.fillStyle=C.night2; ctx.fillRect(16,12,pw,4);
-      ctx.fillStyle=back?C.leaf:C.lamp; ctx.fillRect(16,12,pw*Math.min(1,dist/L.dist),4);
+      ctx.fillStyle=back?C.leaf:C.lamp; ctx.fillRect(16,12,pw*Math.min(1,prog),4);
       ctx.fillStyle=C.muted; ctx.font='12px '+FONT; ctx.textAlign='left';
       const [a,b]=L.name.split(' → '); ctx.fillText(a,16,32); if(b){ ctx.textAlign='right'; ctx.fillText(b,W-16,32); }
+      ctx.textAlign='left'; ctx.fillStyle=C.muted; ctx.fillText('油',16,H-14);
+      ctx.fillStyle=C.night2; ctx.fillRect(34,H-22,90,6); ctx.fillStyle=C.lamp; ctx.fillRect(34,H-22,90*S.oil/100,6);
     };
-    return ()=>{ K.off(); removeEventListener('keydown',kd); removeEventListener('keyup',ku); removeEventListener('keydown',fk); };
+    return ()=>{ K.off(); removeEventListener('keydown',kd); removeEventListener('keyup',ku); };
   });
 }
 
@@ -503,7 +539,7 @@ function title(){
       <div class="story"><p>主后约 61 年。腓立比教会差派以巴弗提，带着馈送，走一千多公里路去罗马，探望被锁着的保罗。</p></div>
       ${V('我已经从以巴弗提受了你们的馈送，当作极美的香气，为神所收纳、所喜悦的祭物。','腓立比书 4:18')}
       <div class="story" style="display:grid;gap:10px">
-        <p>这一路上，你会遇见弥漫四周的「病菌」：<b style="color:#e2a6d2">结党、嫉妒、纷争、怨言</b>。</p>
+        <p>这一路上，<b style="color:#e2a6d2">结党、嫉妒、纷争、怨言</b>像病菌一样一波一波迎面而来。躲不过，只能争战；可是每打一仗，身上也会沾染一些。</p>
         <p>这个游戏不比谁手快。它问的是：你有多愿意停下来，向圣灵敞开，让祂在你里面工作。</p>
       </div>
       <div class="row"><button class="btn" id="go">出发</button><button class="btn ghost" id="notes">研经说明</button></div>
@@ -536,7 +572,7 @@ function out1(){
       {kind:'flesh',text:'答应其中一边。毕竟她们比较有道理。',reply:'你选了边。可是心里知道，你刚刚也加入了「结党」。',burden:'+不同心'},
       {kind:'flesh',text:'两边都答应，先把人打发走再说。',reply:'两边都满意地离开了。你却背上了两份承诺，谁也不能得罪。',burden:'+不同心'},
       {kind:'locked',text:'……（这时的以巴弗提，还看不见这条路）'}
-    ],next:()=>journey('out',0,r=>r==='collapse'?collapse():out2())});
+    ],next:()=>journey('out',0,out2)});
 }
 function out2(){
   setAct('序幕 · 帖撒罗尼迦','旅途中');
@@ -547,7 +583,7 @@ function out2(){
       {kind:'flesh',text:'加快脚步。越早办完事，越早回去收拾局面。',reply:'你把自己逼得更紧，脚步更急，呼吸更乱。',burden:'+敌对'},
       {kind:'flesh',text:'在心里反复盘算：回去以后要怎样对付那些人。',reply:'那些念头整夜在你脑中打转，赶都赶不走。',burden:'+敌对'},
       {kind:'locked',text:'……（这条路还藏在黑暗里）'}
-    ],next:()=>journey('out',1,r=>r==='collapse'?collapse():out3())});
+    ],next:()=>journey('out',1,out3)});
 }
 function out3(){
   setAct('序幕 · 布林迪西','意大利');
@@ -560,18 +596,26 @@ function out3(){
     ],next:()=>journey('out',2,()=>collapse())});
 }
 function collapse(){
+  const sick=S.sick; S.arriveSick=sick;
+  const how=sick<80?'walk':sick<95?'crawl':'carried';
+  const scene={
+    walk:['他拄着杖，一步一步走到保罗住的地方。敲了门，门一开，他就倒在门口。','倒在保罗门口'],
+    crawl:['离城门还有一段路，他再也站不起来了。他用手和膝盖，一寸一寸地爬，终于爬到了罗马城门。','爬到罗马城门'],
+    carried:['他倒在亚壁古道旁边，动也动不了。几位罗马的弟兄出城来，认出了他，把他抬到保罗那里。当年保罗来罗马的时候，也是弟兄们出来迎接他（徒 28:15）。','被弟兄抬进罗马']
+  }[how];
   S.sick=100; hud();
-  setAct('罗马城门外','病得几乎要死');
-  story({eyebrow:'序幕 · 终',title:'倒在罗马城门前',
-    paras:['以巴弗提倒下了。','他走了一千多公里，背着教会的馈送，也背着教会的纷争、外面的敌对，还有自己的忧虑。他靠着一腔热心走到这里，现在再也走不动了。','你可能已经发现：<b>不管你怎样躲、怎样反击，凭自己是走不到终点的。</b>'],
-    verses:[['他实在是病了，几乎要死。','腓立比书 2:27上']],
+  setAct('罗马','病得几乎要死');
+  story({eyebrow:'序幕 · 终',title:scene[1],
+    paras:[scene[0],'他走了一千多公里，一路争战。每击碎一个病菌，身上就多沾染一点；可是不打，就过不去。',
+      `<span class="note" style="font-family:var(--sans)">伤痕记录　击碎病菌 ${S.kills} 个 · 沾染 ${Math.round(S.infect)} · 接住的油和水 ${S.supplyGot} 份</span>`],
+    verses:[['他为做基督的工夫，几乎至死，不顾性命。','腓立比书 2:30'],['他实在是病了，几乎要死。','腓立比书 2:27上']],
     btn:'……',next:mercy});
 }
 function mercy(){
-  S.sick=55; unlockSpirit(); S.burdens=[]; hud();
+  S.sick=clamp((S.arriveSick||90)-25,40,75); unlockSpirit(); S.burdens=[]; hud();
   setAct('罗马 · 保罗的租屋','神怜恤他');
   story({eyebrow:'转折',title:'然而神怜恤他',
-    paras:['醒过来的时候，他听见一个熟悉的声音在祷告。那是保罗，手腕上还锁着铁链。','教会的馈送终于交到了保罗手里。背上的重担一件一件卸了下来，不是他自己卸的。','现在，你的画面底部亮起了一个按钮：<b style="color:var(--lamp)">🕊 等候</b>。长按它（电脑按住空格键），安静祷告，圣灵的光就会亮起来。圣灵的光会<b>照明</b>你看不见的路，<b>保守</b>你不被病菌侵蚀，<b>加力</b>给你做凭自己做不到的事。'],
+    paras:['保罗称他是「与我一同做工，一同当兵」的战友（2:25）。','醒过来的时候，他听见一个熟悉的声音在祷告。那是保罗，手腕上还锁着铁链。','教会的馈送终于交到了保罗手里。背上的重担一件一件卸了下来，不是他自己卸的。','现在，你的画面底部亮起了一个按钮：<b style="color:var(--lamp)">🕊 等候</b>。长按它（电脑按住空格键），安静祷告，圣灵的光就会亮起来。圣灵的光会<b>照明</b>你看不见的路，<b>保守</b>你不被病菌侵蚀，<b>加力</b>给你做凭自己做不到的事。'],
     verses:[['然而神怜恤他，不但怜恤他，也怜恤我，免得我忧上加忧。','腓立比书 2:27下'],['因为你们立志行事，都是神在你们心里运行，为要成就他的美意。','腓立比书 2:13']],
     extra:'<p class="note">试试看：现在就长按「等候」，看上方「圣灵」一栏亮起来。</p>',
     btn:'进入第一章',next:act1});
@@ -588,7 +632,7 @@ const ROME=[
     options:[
       {kind:'flesh',text:'揭穿他们！让大家都知道他们的动机不纯。',fruit:'和平',reply:'你越说越气。你发现，自己也开始发烧了。'},
       {kind:'flesh',text:'我们也组织起来，传得比他们更好、更多。',fruit:'和平',reply:'你刚刚也结了一个党。'},
-      {kind:'spirit',text:'学保罗的眼光：不管动机怎样，基督究竟被传开了。',fruit:'和平',reply:'保罗没有被嫉妒拖进纷争。他的眼睛定在基督身上，所以病菌碰不到他的心。',verse:['这有何妨呢？或是假意，或是真心，无论怎样，基督究竟被传开了。为此，我就欢喜，并且还要欢喜。','腓立比书 1:18']}]},
+      {kind:'spirit',text:'学保罗的眼光：不管动机怎样，基督究竟被传开了。',fruit:'和平',reply:'保罗没有停下来跟他们算账。他只有一件事：向着标竿直跑。别人的动机拦不住他，他的眼睛只定在基督身上。',verse:['这有何妨呢？或是假意，或是真心，无论怎样，基督究竟被传开了。为此，我就欢喜，并且还要欢喜。','腓立比书 1:18']}]},
   {title:'生死未卜',situation:'审讯的日子近了，保罗可能被判死刑。夜里，你问他：「你不怕吗？」你自己心里想的是：',
     options:[
       {kind:'flesh',text:'只要能活下来，说话软一点也没关系。',fruit:'信实',reply:'你的心开始讨价还价。'},
@@ -859,7 +903,7 @@ function returnStart(){
   S.burdens=['忧虑','敌对','不同心']; S.sick=Math.min(S.sick,15); hud();
   S.virtues=[...S.thoughts].map(n=>({name:n,hp:2,rotten:false,x:0,y:0}));
   story({eyebrow:'第四章',title:'同一条路，不同的人',
-    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','这一次你有两样东西可以抵挡病菌。一样是<b>平安</b>：长按「等候」就会举起盾牌，病菌碰到就消散，等候时病也会慢慢好转。另一样是你在第三章接住的<b>思念</b>（4:8），它们会围着你转，替你挡住病菌。'+(S.thoughts.size?'':'（你在第三章没有接住任何思念。）'),'可是要留心：思念是靠人持守的。它们挡住病菌，自己也会被感染，最后腐败掉。只有神所赐的平安不会腐败。'],
+    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','路上一样躲不过，一样要争战，油和水也一样会迎面送来。这一次你还多了两样东西可以抵挡病菌。一样是<b>平安</b>：长按「等候」就会举起盾牌，病菌碰到就消散，等候时病也会慢慢好转。另一样是你在第三章接住的<b>思念</b>（4:8），它们会围着你转，替你挡住病菌。'+(S.thoughts.size?'':'（你在第三章没有接住任何思念。）'),'可是要留心：思念是靠人持守的。它们挡住病菌，自己也会被感染，最后腐败掉。只有神所赐的平安不会腐败。'],
     verses:[['所以我越发急速打发他去，叫你们再见他就可以喜乐，我也可以少些忧愁。','腓立比书 2:28'],['神所赐出人意外的平安，必在基督耶稣里保守你们的心怀意念。','腓立比书 4:7']],
     extra:'<p class="note">「保守」原文是驻军守城的字：平安像卫兵一样，守着你的心。</p>',
     btn:'出发',next:back1});
@@ -930,7 +974,7 @@ function ending(){
           <p>放下的资历：${S.dropped}/7</p>
           <p>还在发光的思念：${alive.join('、')||'没有'}</p>
           <p>腐败了的思念：${rotted.join('、')||'没有'}</p>
-          <p>根扎下的深度：${S.roots}/9　·　安静等候：${Math.round(S.waitSec)} 秒　·　凭自己反击：${S.fought} 次</p>
+          <p>根扎下的深度：${S.roots}/9　·　安静等候：${Math.round(S.waitSec)} 秒　·　击碎病菌：${S.kills} 个</p>
         </div>
         <h2>下一段旅程</h2>
         <p class="note">保罗在新约留下了十三卷书信。每一卷背后都有一段路，也有一群还没有完成的人。</p>
