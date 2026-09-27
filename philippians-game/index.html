@@ -114,12 +114,11 @@ p{margin:0}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 
 /* runner overlay */
-.pack{position:absolute;left:0;right:0;bottom:0;padding:8px 16px 10px;display:flex;gap:6px;flex-wrap:wrap;background:linear-gradient(transparent,rgba(17,23,38,.92) 30%)}
+.pack{position:absolute;left:0;right:0;bottom:0;padding:8px 16px 10px;display:flex;gap:5px;flex-wrap:wrap;background:linear-gradient(transparent,rgba(17,23,38,.92) 30%);pointer-events:none}
 .pack .label{width:100%;font-size:11px;color:var(--muted);letter-spacing:.1em}
-.item{border:1px solid var(--lamp-dim);background:rgba(242,193,78,.14);color:var(--lamp);border-radius:4px;padding:3px 8px;font-size:13px;box-shadow:0 0 8px rgba(242,193,78,.25)}
-.item.seen{border-color:var(--earth);background:#3a3026;color:#c7b79d;box-shadow:none;text-decoration:line-through;text-decoration-color:rgba(199,183,157,.5)}
-.item.seen::after{content:" · 丢弃";text-decoration:none;color:var(--leaf)}
-.item:not(.seen){pointer-events:none}
+.strand{border:1px dashed #8a8f9c;background:rgba(138,143,156,.12);color:#c9ccd4;border-radius:4px;padding:1px 7px;font-size:12px}
+.strand.deep{border:1px solid var(--germ);color:#e2a6d2;background:rgba(185,95,163,.18)}
+#struggle{position:absolute;right:16px;top:44px;background:transparent;border:1px solid #8a8f9c;color:#c9ccd4;border-radius:20px;padding:6px 14px;font-size:13px}
 .lookback{position:absolute;left:16px;top:44px;max-width:280px;background:var(--panel);border:1px solid var(--germ);border-radius:8px;padding:10px 12px;font-size:13px;display:grid;gap:8px}
 .lookback button{justify-self:start;background:var(--germ);border:0;border-radius:4px;padding:4px 12px;color:#fff}
 
@@ -769,15 +768,8 @@ function cross(){
 }
 
 /* ================= 第三章 · 向着标竿直跑 ================= */
-const PACK=[
-  {n:'名校学历',p:'第八天受割礼'},
-  {n:'大公司职衔',p:'以色列族'},
-  {n:'豪宅区的地址',p:'便雅悯支派'},
-  {n:'教会服事年资',p:'希伯来人所生的希伯来人'},
-  {n:'专业资格与奖项',p:'按律法是法利赛人'},
-  {n:'「我比他们都热心」',p:'就热心说，我是逼迫教会的'},
-  {n:'自以为义',p:'就律法上的义说，我是无可指摘的',deep:true}
-];
+/* 第三章：一排一排、一个方阵一个方阵迎面而来的资历 */
+const CREDS=['第八天受割礼','以色列族','便雅悯支派','希伯来人','法利赛人','热心','名校学历','大公司职衔','豪宅区','服事年资','专业资格','奖项','头衔','人脉','名声','存款'];
 const GOOD=['真实','可敬','公义','清洁','可爱','有美名','德行','称赞'];
 /* 4:8 原文：希腊文与字义；rot = 靠人持守时腐败成的样子 */
 const VIRTUE={
@@ -790,110 +782,128 @@ const VIRTUE={
   '德行':{gr:'ἀρετή',m:'卓越、美德。这是希腊哲人最爱用的字，保罗书信里只用这一次',rot:'骄傲'},
   '称赞':{gr:'ἔπαινος',m:'值得称赞的，最终是蒙神称许（参 1:11）',rot:'求掌声'}
 };
-const BAD=['比较','自怜','别人怎么看我','想当年','抱怨','嫉妒'];
 function act3(){
-  setAct('第三章 · 标竿','丢弃，然后直跑');
+  setAct('第三章 · 标竿','松手，然后直跑');
   story({eyebrow:'第三章',title:'向着标竿直跑',
-    paras:['保罗曾经有一张很漂亮的履历：第八天受割礼、以色列族、便雅悯支派、法利赛人、热心、律法上的义无可指摘。','今天我们的履历换了名字：名校、大公司、豪宅区、服事年资……还有藏在最底下的一样：<b>自以为义</b>。','这些东西在背包里闪闪发亮，像宝物一样，把你压得跑不动。<b>长按「等候」</b>，圣灵的光会照出它们的真面目，然后你就可以点击丢弃。「自以为义」藏得最深，要先放下其他所有东西，还要圣灵的光完全亮起，才看得出来。','奔跑时，迎面会飞来各种念头。接住腓立比书 4:8 那些值得思念的，避开其他的。'],
-    verses:[['只是我先前以为与我有益的，我现在因基督都当作有损的……我为他已经丢弃万事，看作粪土，为要得着基督。','腓立比书 3:7-8']],
-    extra:'<p class="note">操作：点击画面上方或下方换跑道（或 ↑↓ 键）。背后有人叫你时，不要回头。</p>',
+    paras:['保罗曾经有一张很漂亮的履历：第八天受割礼、以色列族、便雅悯支派、法利赛人、热心、律法上的义无可指摘。今天的履历换了名字：名校、大公司、豪宅区、头衔、服事年资……',
+      '这些东西不是一件一件来的。它们一排一排、一个方阵一个方阵地迎面而来，闪闪发亮。碰到你，就像蜘蛛网一样缠在身上，越缠越多，你就越跑越慢。',
+      '靠自己用力挣脱，只会越缠越紧。要松开，就要<b>伸手抓住从上面来的</b>，也就是 4:8 那些金色的光：真实、可敬、公义、清洁、可爱、有美名、德行、称赞。手里抓住了新的，旧的就松开了。<b>长按「等候」</b>，这些光会来得更多，也会向你靠近。',
+      '最深的一层是「<b>自以为义</b>」。它不是你抓住什么美德就能松开的。'],
+    verses:[['这不是说我已经得着了，已经完全了；我乃是竭力追求，或者可以得着基督耶稣所以得着我的。','腓立比书 3:12']],
+    extra:'<p class="note">操作：拖动或 ↑↓ 移动，碰到金色的光就抓住。背后有人叫你时，不要回头。</p>',
     btn:'起跑',next:runner});
 }
 function runner(){
   setAct('第三章 · 标竿','向着标竿直跑');
   go(()=>{
     const K=makeCanvas(), {ctx}=K;
-    const pack=PACK.map(x=>({...x,seen:false,gone:false}));
-    const packEl=document.createElement('div'); packEl.className='pack'; stage.appendChild(packEl);
+    const webEl=document.createElement('div'); webEl.className='pack'; stage.appendChild(webEl);
     const lookEl=document.createElement('div'); lookEl.className='lookback'; lookEl.hidden=true; stage.appendChild(lookEl);
-    const GOAL=4200; let dist=0,t=0,lane=1,ly=1,stun=0,spawn=.8,lookT=rnd(7,10),lookOpen=0,done=false;
-    const obs=[], pops=[];
-    $('#keys').innerHTML='点上/下半部或 ↑↓ 换跑道 · 长按「等候」照出包袱';
-    const renderPack=()=>{
-      packEl.innerHTML='<div class="label">背包里的「宝物」（被圣灵照出来的，才能丢弃）</div>'+pack.filter(x=>!x.gone).map((x,i)=>`<button class="item ${x.seen?'seen':''}" data-i="${pack.indexOf(x)}">${x.seen?x.n+'｜'+x.p:x.n}</button>`).join('');
-      packEl.querySelectorAll('.item.seen').forEach(b=>b.onclick=()=>{
-        const it=pack[+b.dataset.i]; it.gone=true; S.dropped++; S.obey++;
-        if(it.deep){ fruit('温柔',+1); fruit('节制',+1); toast('保罗丢得掉它，是因为他得着了更宝贵的：以认识基督耶稣为至宝。<br>「不是有自己因律法而得的义，乃是有信基督的义。」3:8-9',5200); }
-        else toast(`丢弃「${it.n}」，看作粪土（3:8）`,1800);
-        renderPack();
-      });
-    };
-    renderPack();
-    const laneY=i=>K.H*(.22+i*.2);
-    const tap=e=>{ const r=K.cv.getBoundingClientRect(), y=e.clientY-r.top; if(y<laneY(lane)-10) lane=Math.max(0,lane-1); else if(y>laneY(lane)+10) lane=Math.min(2,lane+1); };
-    K.cv.addEventListener('pointerdown',tap);
-    const kd=e=>{ if(e.key==='ArrowUp') lane=Math.max(0,lane-1); if(e.key==='ArrowDown') lane=Math.min(2,lane+1); };
-    addEventListener('keydown',kd);
+    const sBtn=document.createElement('button'); sBtn.id='struggle'; sBtn.textContent='用力挣脱'; stage.appendChild(sBtn);
+    const GOAL=5200; let dist=0,t=0,py=K.H*.5,ty=py,form=1.5,light=1.2,lookT=rnd(9,12),lookOpen=0,done=false,deepOn=false,prize=null,tight=0,struggles=0;
+    const web=[], creds=[], lights=[], pops=[];
+    let firstStick=true;
+    $('#keys').innerHTML='拖动 / ↑↓ 移动 · 抓住金色的光 · 长按「等候」让光靠近';
+    const renderWeb=()=>{ webEl.innerHTML=`<div class="label">缠在身上的（${web.length}）</div>`+web.map(w=>`<span class="strand ${w.deep?'deep':''}">${w.n}</span>`).join(''); };
+    renderWeb();
+    sBtn.onclick=()=>{ struggles++; tight=Math.min(.35,tight+.05);
+      pop(pops,K.W*.18,py-40,'越挣越紧',C.muted);
+      if(struggles===1) toast('靠自己用力挣脱，蛛网反而缠得更紧。',2600); };
+    const move=e=>{ if(e.pointerType==='mouse'||e.buttons){ const r=K.cv.getBoundingClientRect(); ty=clamp(e.clientY-r.top,50,K.H-110); } };
+    K.cv.addEventListener('pointermove',move); K.cv.addEventListener('pointerdown',move);
+    const keys={}; const kd=e=>{keys[e.key]=true}, ku=e=>{keys[e.key]=false};
+    addEventListener('keydown',kd); addEventListener('keyup',ku);
+    const release=(n,by)=>{ let freed=[];
+      for(let i=0;i<n;i++){ const k=web.findIndex(w=>!w.deep); if(k<0) break; freed.push(web.splice(k,1)[0].n); S.dropped++; }
+      if(freed.length){ tight=Math.max(0,tight-.1); pop(pops,K.W*.18,py-56,`抓住「${by}」，手就松开了「${freed.join('」「')}」`,C.leaf); }
+      renderWeb(); };
     const showLook=()=>{
-      const back=pack.filter(x=>x.gone);
-      lookEl.innerHTML=`<div>身后有声音喊你：<br><b>「${back.length?'你丢掉的「'+pick(back).n+'」':'想想你以前'}……多风光啊！回头看看吧！」</b></div><button id="lb">回头看</button>`;
+      lookEl.innerHTML=`<div>身后有声音喊你：<br><b>「想想你以前多风光啊！回头看看吧！」</b></div><button id="lb">回头看</button>`;
       lookEl.hidden=false; lookOpen=4;
-      lookEl.querySelector('#lb').onclick=()=>{
-        lookEl.hidden=true; lookOpen=0; stun=1.5; S.flesh++;
-        const g=pack.filter(x=>x.gone); if(g.length){ const it=pick(g); it.gone=false; it.seen=false; S.dropped--; toast(`你回头了。「${it.n}」又回到你的背包里。`,2600); renderPack(); }
-        else toast('你回头了，脚步慢了下来。',2000);
-      };
+      lookEl.querySelector('#lb').onclick=()=>{ lookEl.hidden=true; lookOpen=0; S.flesh++;
+        const n=pick(CREDS); web.push({n}); renderWeb(); toast(`你回头了，「${n}」又缠了上来。`,2400); lookT=rnd(9,12); };
     };
     sceneTick=dt=>{
       if(done) return; t+=dt;
-      const W=K.W,H=K.H, px=W*.18;
-      const load=pack.filter(x=>!x.gone).length;
-      // 圣灵照明
-      if(S.waiting){ pack.forEach((x,i)=>{ if(x.gone||x.seen) return;
-        if(!x.deep && S.spirit>=12*(i+1)){ x.seen=true; renderPack(); pop(pops,px,laneY(lane)-40,'照出来了：'+x.n,C.lamp); }
-        if(x.deep && S.spirit>=98 && pack.every(y=>y.deep||y.gone)){ x.seen=true; renderPack(); toast('最深的一层被照出来了：自以为义',3000); } }); }
-      stun=Math.max(0,stun-dt);
-      const speed=280*(1-.085*load)*(S.waiting?.15:1)*(stun>0?.3:1);
-      dist+=speed*dt;
-      ly+=(lane-ly)*Math.min(1,dt*12);
+      const W=K.W,H=K.H,px=W*.18,prog=dist/GOAL,top=50,bot=H-110;
+      if(keys.ArrowUp) ty=clamp(ty-260*dt,top,bot);
+      if(keys.ArrowDown) ty=clamp(ty+260*dt,top,bot);
+      const load=web.length+(web.some(w=>w.deep)?4:0);
+      py+=(ty-py)*Math.min(1,dt*8/(1+load*.08));
+      const speed=270*Math.max(.12,1-.055*load-tight)*(S.waiting?.2:1);
+      dist+=speed*dt; tight=Math.max(0,tight-dt*.01);
+      // 资历方阵
+      form-=dt;
+      if(form<=0 && !deepOn && prog<.78){ form=rnd(2.6,3.6)*(1-prog*.3);
+        const rows=Math.floor((bot-top)/40), cols=prog>.4?3:prog>.15?2:1, gap=Math.floor(rnd(0,rows));
+        for(let c=0;c<cols;c++) for(let r=0;r<=rows;r++){ if(cols===1&&Math.abs(r-gap)<1) continue;
+          creds.push({x:W+40+c*96,y:top+r*40,label:pick(CREDS)}); } }
+      // 自以为义：最后一个方阵
+      if(!deepOn && prog>=.8){ deepOn=true; for(let r=0;r*32<=bot-top+10;r++) creds.push({x:W+40,y:top+r*32,label:'律法上的义',deep:true}); }
+      // 从上面来的光
+      light-=dt*(S.waiting?2.2:1);
+      if(light<=0 && prog<.95){ light=rnd(1.2,2); const n=pick(GOOD); lights.push({x:W+30,y:rnd(top,bot),label:n}); }
+      for(let i=creds.length-1;i>=0;i--){ const c=creds[i]; c.x-=(speed+30)*dt;
+        if(Math.abs(c.x-px)<34&&Math.abs(c.y-py)<(c.deep?26:22)){ creds.splice(i,1);
+          if(c.deep){ S.deepCaught=true; if(!web.some(w=>w.deep)){ web.push({n:'自以为义',deep:true}); toast('「就律法上的义说，我是无可指摘的。」最深的一层缠上来了。',3600);
+              prize={x:W*.72,y:(top+bot)/2}; } }
+          else { web.push({n:c.label}); if(firstStick){ firstStick=false; toast('碰到就缠上身，像蜘蛛网一样。',2400);} }
+          renderWeb(); continue; }
+        if(c.x<-60) creds.splice(i,1); }
+      for(let i=lights.length-1;i>=0;i--){ const l=lights[i]; l.x-=(speed*.7+50)*dt;
+        if(S.waiting){ l.x+=(px-l.x)*dt*.6; l.y+=(py-l.y)*dt*1.2; }
+        if(Math.hypot(l.x-px,l.y-py)<30){ lights.splice(i,1); const n=!S.thoughts.has(l.label); S.thoughts.add(l.label); S.obey++;
+          if(n){ const v=VIRTUE[l.label]; toast(`<b>${l.label}</b> ${v.gr}<br><span style="font-size:13px">${v.m}</span>`,3400); }
+          release(2,l.label); continue; }
+        if(l.x<-40) lights.splice(i,1); }
+      // 至宝：只能等候，让祂来得着你（3:12）
+      if(prize){ if(S.waiting){ prize.x+=(px-prize.x)*dt*.5; prize.y+=(py-prize.y)*dt*.8; }
+        else { prize.x+=(W*.72-prize.x)*dt*.8; if(!prize.hinted&&t%1<dt&&dist>GOAL*.86){ prize.hinted=true; toast('这一层抓什么都松不开。停下来，长按「等候」。',3200); } }
+        if(Math.hypot(prize.x-px,prize.y-py)<34){ prize=null; S.selfFree=true; S.obey++;
+          const n=web.length; S.dropped+=web.filter(w=>!w.deep).length; web.length=0; renderWeb(); fruit('温柔',+1); fruit('节制',+1);
+          toast('不是你抓住了祂，是祂得着了你。「自以为义」和其余的一切都松开了。<br>「以认识我主基督耶稣为至宝……不是有自己因律法而得的义，乃是有信基督的义。」3:8-9',6000); } }
       // 回头
-      if(lookOpen>0){ lookOpen-=dt; if(lookOpen<=0){ lookEl.hidden=true; S.obey++; S.spirit=clamp(S.spirit+8,0,100); pop(pops,px,laneY(lane)-40,'忘记背后，努力面前',C.leaf); lookT=rnd(8,12);} }
+      if(lookOpen>0){ lookOpen-=dt; if(lookOpen<=0){ lookEl.hidden=true; S.obey++; S.spirit=clamp(S.spirit+8,0,100); pop(pops,px,py-40,'忘记背后，努力面前',C.leaf); lookT=rnd(9,12);} }
       else { lookT-=dt; if(lookT<=0) showLook(); }
-      // 念头
-      spawn-=dt;
-      if(spawn<=0 && dist<GOAL-300){ spawn=rnd(.7,1.2); const good=Math.random()<.55;
-        obs.push({lane:Math.floor(Math.random()*3),x:W+40,good,label:good?pick(GOOD):pick(BAD)}); }
-      for(let i=obs.length-1;i>=0;i--){ const o=obs[i]; o.x-=(speed+60)*dt;
-        if(Math.abs(o.x-px)<22 && o.lane===lane){ obs.splice(i,1);
-          if(o.good){ const n=!S.thoughts.has(o.label); S.thoughts.add(o.label); pop(pops,px,laneY(lane)-34,(n?'✦ ':'')+o.label,C.lamp);
-            if(n){ const v=VIRTUE[o.label]; toast(`<b>${o.label}</b> ${v.gr}<br><span style="font-size:13px">${v.m}</span>`,3400); } }
-          else { stun=.9; S.sick=clamp(S.sick+4,0,100); pop(pops,px,laneY(lane)-34,o.label+'……绊了一下',C.germ); }
-          continue; }
-        if(o.x<-60) obs.splice(i,1); }
-      if(dist>=GOAL){ done=true; lookEl.hidden=true; return finishRun(pack); }
+      if(dist>=GOAL){ done=true; lookEl.hidden=true; return finishRun(); }
       // ---- 画 ----
       const g=ctx.createLinearGradient(0,0,W,0); g.addColorStop(0,'#141a2a'); g.addColorStop(1,'#232a3c'); ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
-      // 标竿
+      ctx.strokeStyle='rgba(166,169,159,.1)'; ctx.setLineDash([30,30]); ctx.lineDashOffset=dist%60;
+      for(const f of [.3,.55]){ ctx.beginPath(); ctx.moveTo(0,H*f); ctx.lineTo(W,H*f); ctx.stroke(); } ctx.setLineDash([]);
       const gx=W-40+(GOAL-dist)*.35;
-      if(gx<W+30){ ctx.strokeStyle=C.lamp; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(gx,laneY(0)-40); ctx.lineTo(gx,laneY(2)+30); ctx.stroke();
-        ctx.fillStyle=C.lamp; ctx.fillRect(gx,laneY(0)-40,26,16); }
-      for(let i=0;i<3;i++){ const y=laneY(i)+18; ctx.strokeStyle='rgba(166,169,159,.14)'; ctx.setLineDash([30,30]); ctx.lineDashOffset=dist%60; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-      ctx.setLineDash([]);
-      const font=FONT;
-      for(const o of obs){ const y=laneY(o.lane);
-        ctx.fillStyle=o.good?'rgba(242,193,78,.16)':'rgba(185,95,163,.25)'; ctx.strokeStyle=o.good?C.lamp:C.germ;
-        ctx.font=`500 14px ${font}`; const tw=ctx.measureText(o.label).width+16;
-        ctx.beginPath(); ctx.roundRect(o.x-tw/2,y-14,tw,26,13); ctx.fill(); ctx.stroke();
-        ctx.fillStyle=o.good?C.lamp:'#e2a6d2'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.label,o.x,y); }
+      if(gx<W+30){ ctx.strokeStyle=C.lamp; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(gx,top-20); ctx.lineTo(gx,bot+20); ctx.stroke(); ctx.fillStyle=C.lamp; ctx.fillRect(gx,top-20,26,16); ctx.lineWidth=1; }
+      ctx.font=`500 13px ${FONT}`; ctx.textBaseline='middle'; ctx.textAlign='center';
+      for(const c of creds){ const tw=ctx.measureText(c.label).width+14, glint=.5+.5*Math.sin(t*4+c.y);
+        ctx.fillStyle=c.deep?'rgba(185,95,163,.3)':`rgba(242,193,78,${.1+glint*.12})`; ctx.strokeStyle=c.deep?C.germ:'rgba(242,193,78,.55)';
+        ctx.beginPath(); ctx.roundRect(c.x-tw/2,c.y-12,tw,24,4); ctx.fill(); ctx.stroke();
+        ctx.fillStyle=c.deep?'#e2a6d2':'#e6cf8f'; ctx.fillText(c.label,c.x,c.y); }
+      for(const l of lights){ ctx.save(); ctx.shadowColor='rgba(242,193,78,.9)'; ctx.shadowBlur=18; ctx.fillStyle='rgba(242,193,78,.25)';
+        ctx.beginPath(); ctx.arc(l.x,l.y,20,0,Math.PI*2); ctx.fill(); ctx.restore(); ctx.fillStyle=C.lamp; ctx.fillText(l.label,l.x,l.y); }
+      if(prize){ ctx.save(); ctx.shadowColor='#fff3c4'; ctx.shadowBlur=30; ctx.fillStyle='rgba(255,243,196,.35)'; ctx.beginPath(); ctx.arc(prize.x,prize.y,30+Math.sin(t*3)*3,0,Math.PI*2); ctx.fill(); ctx.restore();
+        ctx.fillStyle='#fff3c4'; ctx.fillText('至宝',prize.x,prize.y-2); ctx.font=`11px ${FONT}`; ctx.fillText('基督耶稣',prize.x,prize.y+14); ctx.font=`500 13px ${FONT}`; }
       ctx.textBaseline='alphabetic';
-      const y=H*(.22+ly*.2);
-      drawTraveler(ctx,px,y,Math.min(7,load),t*(stun>0?.3:1.4),false);
-      if(S.waiting){ ctx.fillStyle='rgba(242,193,78,.08)'; ctx.fillRect(0,0,W,H); }
+      drawTraveler(ctx,px,py,0,t*(1.4-Math.min(1,load*.06)),false);
+      // 蛛网
+      if(web.length){ ctx.strokeStyle=web.some(w=>w.deep)?'rgba(226,166,210,.55)':'rgba(201,204,212,.45)'; ctx.lineWidth=1;
+        const n=Math.min(24,web.length*2+(tight*20|0));
+        for(let i=0;i<n;i++){ const a=i*2.4, r=16+(i%5)*5; ctx.beginPath(); ctx.moveTo(px+Math.cos(a)*r,py-4+Math.sin(a)*r); ctx.lineTo(px+Math.cos(a+2.1)*r,py-4+Math.sin(a+2.1)*r); ctx.stroke(); }
+        for(let r=12;r<=12+Math.min(4,web.length/2)*6;r+=6){ ctx.beginPath(); ctx.arc(px,py-4,r,0,Math.PI*2); ctx.stroke(); } }
+      if(S.waiting){ ctx.fillStyle='rgba(242,193,78,.07)'; ctx.fillRect(0,0,W,H); }
       drawPops(ctx,pops,dt);
-      const pw=W-32; ctx.fillStyle=C.night2; ctx.fillRect(16,12,pw,4); ctx.fillStyle=C.lamp; ctx.fillRect(16,12,pw*Math.min(1,dist/GOAL),4);
-      ctx.fillStyle=C.muted; ctx.font='12px '+font; ctx.textAlign='left';
-      ctx.fillText(`思念 ${S.thoughts.size}/8 · 背包 ${load} 件`,16,32); ctx.textAlign='right'; ctx.fillText('标竿',W-16,32);
+      const pw=W-32; ctx.fillStyle=C.night2; ctx.fillRect(16,12,pw,4); ctx.fillStyle=C.lamp; ctx.fillRect(16,12,pw*Math.min(1,prog),4);
+      ctx.fillStyle=C.muted; ctx.font='12px '+FONT; ctx.textAlign='left'; ctx.fillText(`抓住的光 ${S.thoughts.size}/8`,16,32); ctx.textAlign='right'; ctx.fillText('标竿',W-16,32);
     };
-    return ()=>{ K.off(); removeEventListener('keydown',kd); };
+    return ()=>{ K.off(); removeEventListener('keydown',kd); removeEventListener('keyup',ku); };
   });
 }
-function finishRun(pack){
-  const left=pack.filter(x=>!x.gone).map(x=>x.n);
+function finishRun(){
+  const still=S.selfFree?[]:['自以为义'];
   story({eyebrow:'第三章 · 完',title:'到了标竿',
-    paras:[left.length?`你到了。但背包里还背着：${left.join('、')}。没关系，保罗也说「我不是以为自己已经得着了」。`:'你到了，背包是空的。你从来没有跑得这么轻。',
-      `一路上你接住了 ${S.thoughts.size}/8 样值得思念的事${S.thoughts.size?'。回家的路上，它们会陪在你身边':''}。`],
-    extra:[...S.thoughts].map(t=>`<p class="note"><b style="color:var(--lamp)">${t}</b> ${VIRTUE[t].gr}：${VIRTUE[t].m}</p>`).join(''),
+    paras:[S.selfFree||!S.deepCaught?'你到了。缠在身上的一切都松开了。那不是你挣脱的，是你抓住了从上面来的，最后是基督得着了你。'
+        :'你到了，可是身上还缠着「自以为义」。没关系，保罗也说「我不是以为自己已经得着了」。',
+      `一路上你抓住了 ${S.thoughts.size}/8 样从上面来的光${S.thoughts.size?'。回家的路上，它们会陪在你身边':''}。`],
     verses:[['弟兄们，我不是以为自己已经得着了；我只有一件事，就是忘记背后，努力面前的，向着标竿直跑，要得神在基督耶稣里从上面召我来得的奖赏。','腓立比书 3:13-14'],['凡是真实的、可敬的、公义的、清洁的、可爱的、有美名的，若有什么德行，若有什么称赞，这些事你们都要思念。','腓立比书 4:8']],
+    extra:[...S.thoughts].map(t=>`<p class="note"><b style="color:var(--lamp)">${t}</b> ${VIRTUE[t].gr}：${VIRTUE[t].m}</p>`).join(''),
     btn:'第四章：回家',next:returnStart});
 }
 
@@ -971,7 +981,7 @@ function ending(){
         <h2>旅程记录</h2>
         <div class="reply" style="gap:6px;font-size:14.5px">
           <p>背回来的重担：${S.burdens.length?S.burdens.join('、'):'没有'}</p>
-          <p>放下的资历：${S.dropped}/7</p>
+          <p>松开的资历：${S.dropped} 样　·　自以为义：${S.selfFree?'被基督得着，松开了':'还缠在身上'}</p>
           <p>还在发光的思念：${alive.join('、')||'没有'}</p>
           <p>腐败了的思念：${rotted.join('、')||'没有'}</p>
           <p>根扎下的深度：${S.roots}/9　·　安静等候：${Math.round(S.waitSec)} 秒　·　击碎病菌：${S.kills} 个</p>
