@@ -367,17 +367,17 @@ function drawPops(ctx,list,dt){
 }
 
 /* ================= 旅程（去程 / 回程） ================= */
-/* wave: 病菌墙间隔（秒）；rate: 零散病菌密度；三关都躲不过，只能争战 */
+/* time: 每一关争战的秒数；wave: 病菌墙间隔（秒）；rate: 零散病菌密度；三关都躲不过，只能争战 */
 const LEGS={
   out:[
-    {name:'腓立比 → 帖撒罗尼迦',sub:'埃格那提亚大道',dist:2300,rate:.7,wave:5.5,types:['结党','纷争','怨言','不同心']},
-    {name:'横渡亚得里亚海',sub:'底拉古 → 布林迪西',dist:2300,rate:.95,wave:4.5,types:['嫉妒','纷争','结党','敌对','怨言'],sea:true},
-    {name:'亚壁古道 → 罗马',sub:'病得几乎要死（2:27）',dist:2100,rate:1.2,wave:3.6,types:['嫉妒','结党','纷争','怨言','虚荣','忧虑'],fever:true}
+    {name:'腓立比 → 帖撒罗尼迦',sub:'埃格那提亚大道',time:60,rate:.7,wave:5.5,types:['结党','纷争','怨言','不同心']},
+    {name:'横渡亚得里亚海',sub:'底拉古 → 布林迪西',time:60,rate:.95,wave:4.5,types:['嫉妒','纷争','结党','敌对','怨言'],sea:true},
+    {name:'亚壁古道 → 罗马',sub:'病得几乎要死（2:27）',time:60,rate:1.2,wave:3.6,types:['嫉妒','结党','纷争','怨言','虚荣','忧虑'],fever:true}
   ],
   back:[
-    {name:'罗马 → 亚壁古道',sub:'回家的路',dist:2300,rate:.8,wave:5,types:['忧虑','怨言','纷争']},
-    {name:'横渡亚得里亚海',sub:'布林迪西 → 底拉古',dist:2300,rate:1,wave:4.3,types:['敌对','嫉妒','纷争','结党'],sea:true},
-    {name:'埃格那提亚大道 → 腓立比',sub:'带着一封喜乐的信',dist:2500,rate:1.2,wave:3.8,types:['结党','不同心','怨言','嫉妒','虚荣']}
+    {name:'罗马 → 亚壁古道',sub:'回家的路',time:60,rate:.8,wave:5,types:['忧虑','怨言','纷争']},
+    {name:'横渡亚得里亚海',sub:'布林迪西 → 底拉古',time:60,rate:1,wave:4.3,types:['敌对','嫉妒','纷争','结党'],sea:true},
+    {name:'埃格那提亚大道 → 腓立比',sub:'带着一封喜乐的信',time:60,rate:1.2,wave:3.8,types:['结党','不同心','怨言','嫉妒','虚荣']}
   ]
 };
 function drawSupply(ctx,it){
@@ -398,7 +398,7 @@ function journey(mode,idx,next){
     setAct(L.name,L.sub);
     const K=makeCanvas(), {ctx}=K;
     const germs=[], items=[], pops=[], slashes=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
-    let dist=0, t=0, spawn=1, wave=2.2, supply=2.5, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
+    let dist=0, run=0, t=0, spawn=1, wave=2.2, supply=2.5, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
     const orbs=back?S.virtues.filter(v=>!v.rotten):[];
     const fb=$('#fightBtn'); fb.hidden=false; fb.textContent='⚔ 争战';
     $('#keys').innerHTML=(back?'长按「等候」举起平安的盾 · ':'')+'点病菌或按「争战」（F 键）击碎它 · 拖动 / ↑↓ 移动，接住油和水';
@@ -409,7 +409,7 @@ function journey(mode,idx,next){
     const reach=()=>K.W*.2+Math.max(240,K.W*.5);
     function kill(g){
       const px=K.W*.2; germs.splice(germs.indexOf(g),1);
-      const cost=(back?3.5:4.5)*(1-S.oil/160);
+      const cost=(back?2:2.5)*(1-S.oil/160);
       S.sick=clamp(S.sick+cost,0,100); S.infect+=cost; S.kills++; S.oil=Math.max(0,S.oil-4);
       slashes.push({x1:px+12,y1:py-6,x2:g.x,y2:g.y,life:.25});
       pop(pops,g.x,g.y-g.r-4,'「'+g.label+'」碎了 · 沾染',S.oil>20?C.lamp:'#e2a6d2');
@@ -430,36 +430,36 @@ function journey(mode,idx,next){
 
     sceneTick=dt=>{
       if(done) return; t+=dt; cool-=dt;
-      const W=K.W,H=K.H, px=W*.2, prog=dist/L.dist;
+      const W=K.W,H=K.H, px=W*.2, prog=run/L.time;
       if(keys.ArrowUp) ty=clamp(ty-260*dt,40,H-30);
       if(keys.ArrowDown) ty=clamp(ty+260*dt,40,H-30);
       const heavy=S.burdens.length;
       py+=(ty-py)*Math.min(1,dt*7/(1+heavy*.5));
       const shield=back&&S.waiting&&S.spirit>2;
       const speed=150*(1-.1*heavy)*(1-S.sick/230)*(S.waiting?.3:1);
-      dist+=speed*dt;
+      dist+=speed*dt; run+=dt*(S.waiting?.3:1);
       // 病
-      if(!back){ S.sick+=heavy*.3*dt+(L.fever?.6*dt:0); S.sick=Math.min(S.sick,L.fever?99:90); }
+      if(!back){ S.sick+=heavy*.1*dt+(L.fever?.3*dt:0); S.sick=Math.min(S.sick,L.fever?99:90); }
       else { if(S.waiting) S.sick=Math.max(0,S.sick-4*dt);
         if(S.sick>=95){ S.sick=95; if(!capped){ capped=true; toast('病菌还在你身上，可是你还走得动。',3000); } } }
       // 病菌墙：一波比一波厚
       wave-=dt;
-      if(wave<=0 && dist<L.dist-250){ wave=L.wave*(1-prog*.35);
+      if(wave<=0 && prog<.95){ wave=L.wave*(1-prog*.35);
         const cols=idx>=1&&prog>.45?2:1, gap=46;
         for(let c=0;c<cols;c++) for(let y=46;y<H-20;y+=gap)
           germs.push({x:W+30+c*48,y:y+rnd(-4,4)+(c?gap/2:0),r:20,label:pick(L.types),vx:-(speed*.9+40),vy:0,ph:Math.random()*6,w:rnd(.8,1.6),wall:true}); }
       // 零散病菌
       spawn-=dt;
-      if(spawn<=0 && dist<L.dist-250){ spawn=rnd(.7,1.4)/(L.rate*(1+prog*.6));
+      if(spawn<=0 && prog<.95){ spawn=rnd(.7,1.4)/(L.rate*(1+prog*.6));
         germs.push({x:W+30,y:rnd(50,H-40),r:rnd(17,24),label:pick(L.types),vx:-rnd(60,120)-speed*.6,vy:0,ph:Math.random()*6,w:rnd(1,2.5)}); }
       // 圣灵的供应：油和水
       supply-=dt;
-      if(supply<=0 && dist<L.dist-200){ supply=rnd(2.2,3.6);
+      if(supply<=0 && prog<.96){ supply=rnd(1.8,3);
         items.push({kind:Math.random()<.5?'oil':'water',x:W+20,y:rnd(60,H-50),ph:Math.random()*6}); }
       for(let i=items.length-1;i>=0;i--){ const it=items[i]; it.x-=(speed*.8+50)*dt; it.y+=Math.sin(t*2+it.ph)*14*dt;
         if(Math.hypot(it.x-px,it.y-py)<28){ items.splice(i,1); S.supplyGot++;
           if(it.kind==='oil'){ S.oil=Math.min(100,S.oil+30); pop(pops,px,py-40,'油：得着力量，争战时沾染得少',C.lamp); }
-          else { S.sick=Math.max(0,S.sick-9); pop(pops,px,py-40,'水：解渴退烧','#8cc8eb'); }
+          else { S.sick=Math.max(0,S.sick-15); pop(pops,px,py-40,'水：解渴退烧','#8cc8eb'); }
           if(S.supplyGot===1) toast('「借着……耶稣基督之灵的帮助」（1:19）。「帮助」原文是供应、补给。',4200);
           continue; }
         if(it.x<-30) items.splice(i,1); }
@@ -475,10 +475,10 @@ function journey(mode,idx,next){
             germs.push({x:W+30,y:rnd(50,H-40),r:22,label:bad,vx:-rnd(70,110)-speed*.6,vy:0,ph:0,w:1.5}); }
           else pop(pops,o.x,o.y-16,`「${o.name}」挡住了，却也染上了`,'#e2a6d2');
           continue; }
-        if(d<g.r+14){ germs.splice(i,1); const hit=back?7:9; S.sick=clamp(S.sick+hit,0,back?95:(L.fever?99:90)); S.infect+=hit; flash=.35; pop(pops,px,py-34,'冲过去，染上了「'+g.label+'」',C.fever); continue; }
+        if(d<g.r+14){ germs.splice(i,1); const hit=back?5:7; S.sick=clamp(S.sick+hit,0,back?95:(L.fever?99:90)); S.infect+=hit; flash=.35; pop(pops,px,py-34,'冲过去，染上了「'+g.label+'」',C.fever); continue; }
         if(g.x<-40) germs.splice(i,1);
       }
-      if(dist>=L.dist){ done=true; return next(); }
+      if(run>=L.time){ done=true; return next(); }
 
       // ---- 画 ----
       const sky=ctx.createLinearGradient(0,0,0,H); sky.addColorStop(0,'#0c1120'); sky.addColorStop(1,L.sea?'#15314a':'#2a2a3a');
@@ -521,6 +521,7 @@ function journey(mode,idx,next){
       ctx.fillStyle=back?C.leaf:C.lamp; ctx.fillRect(16,12,pw*Math.min(1,prog),4);
       ctx.fillStyle=C.muted; ctx.font='12px '+FONT; ctx.textAlign='left';
       const [a,b]=L.name.split(' → '); ctx.fillText(a,16,32); if(b){ ctx.textAlign='right'; ctx.fillText(b,W-16,32); }
+      ctx.textAlign='center'; ctx.fillText(`还要争战 ${Math.max(0,Math.ceil(L.time-run))} 秒`,W/2,32);
       ctx.textAlign='left'; ctx.fillStyle=C.muted; ctx.fillText('油',16,H-14);
       ctx.fillStyle=C.night2; ctx.fillRect(34,H-22,90,6); ctx.fillStyle=C.lamp; ctx.fillRect(34,H-22,90*S.oil/100,6);
     };
