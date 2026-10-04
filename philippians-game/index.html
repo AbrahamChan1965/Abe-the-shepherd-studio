@@ -109,6 +109,7 @@ p{margin:0}
 .reflect{display:grid;gap:10px;min-height:1em}
 .reflect p{font-family:var(--serif);font-size:15.5px;line-height:1.85;color:var(--text);padding-left:12px;border-left:2px solid var(--leaf)}
 .reflect p.pray{color:var(--lamp);border-left-color:var(--lamp)}
+.reflect p.christ{color:#bfe0a8;border-left-color:var(--leaf);font-weight:600}
 .holdtime{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 .rise{animation:rise 1.2s ease-out both}
 @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
@@ -148,6 +149,10 @@ p{margin:0}
 .stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums;color:var(--lamp)}
 .stat span{font-size:12px;color:var(--muted)}
 .bigtree{max-width:260px;justify-self:center;width:100%}
+.loop{border-collapse:collapse;width:100%;font-size:14px}
+.loop th,.loop td{border-bottom:1px solid var(--line);padding:8px 10px;text-align:left;vertical-align:top}
+.loop th{color:var(--lamp-dim);font-weight:500}
+.loop td:first-child{white-space:nowrap;color:var(--muted)}
 ol.q{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:14.5px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -190,7 +195,7 @@ const S={
   spirit:0, sick:0, unlocked:false, waiting:false,
   fruit:Object.fromEntries(FRUITS.map(f=>[f,0])),
   roots:0, obey:0, flesh:0, waitSec:0,
-  burdens:[], dropped:0, thoughts:new Set(), kills:0, infect:0, oil:0, supplyGot:0, virtues:[], rotted:[]
+  burdens:[], dropped:0, thoughts:new Set(), kills:0, infect:0, oil:0, supplyGot:0, peace:0, received:0, peaceBroken:0
 };
 const C={lamp:'#f2c14e',leaf:'#86ad6f',germ:'#b95fa3',fever:'#e0645a',text:'#ebe5d6',muted:'#a6a99f',earth:'#6b5a45',night:'#111726',night2:'#1a2235',line:'#34405a'};
 const $=s=>document.querySelector(s);
@@ -399,9 +404,9 @@ function journey(mode,idx,next){
     const K=makeCanvas(), {ctx}=K;
     const germs=[], items=[], pops=[], slashes=[], stars=[...Array(60)].map(()=>[Math.random(),Math.random()*.5,Math.random()]);
     let dist=0, run=0, t=0, spawn=1, wave=2.2, supply=2.5, py=K.H*.55, ty=py, flash=0, done=false, cool=0, capped=false;
-    const orbs=back?S.virtues.filter(v=>!v.rotten):[];
+    const lights=[]; let lightT=1.2, thinWarned=false;
     const fb=$('#fightBtn'); fb.hidden=false; fb.textContent='⚔ 争战';
-    $('#keys').innerHTML=(back?'长按「等候」举起平安的盾 · ':'')+'点病菌或按「争战」（F 键）击碎它 · 拖动 / ↑↓ 移动，接住油和水';
+    $('#keys').innerHTML=(back?'抓住金色的光，平安就加厚 · 长按「等候」光会靠近 · ':'')+'点病菌或按「争战」（F 键）击碎它 · 拖动 / ↑↓ 移动，接住油和水';
     if(idx===0) toast(back?'同样的路，同样的病菌，一样躲不过。':'结党、嫉妒、纷争、怨言……一波一波迎面而来，躲不过，只能争战。',3400);
     const keys={};
     const kd=e=>{keys[e.key]=true; if(e.key==='f'||e.key==='F'||e.key==='ArrowRight') strike();}, ku=e=>{keys[e.key]=false};
@@ -435,12 +440,14 @@ function journey(mode,idx,next){
       if(keys.ArrowDown) ty=clamp(ty+260*dt,40,H-30);
       const heavy=S.burdens.length;
       py+=(ty-py)*Math.min(1,dt*7/(1+heavy*.5));
-      const shield=back&&S.waiting&&S.spirit>2;
+      const shield=back&&S.peace>0;
       const speed=150*(1-.1*heavy)*(1-S.sick/230)*(S.waiting?.3:1);
       dist+=speed*dt; run+=dt*(S.waiting?.3:1);
       // 病
       if(!back){ S.sick+=heavy*.1*dt+(L.fever?.3*dt:0); S.sick=Math.min(S.sick,L.fever?99:90); }
       else { if(S.waiting) S.sick=Math.max(0,S.sick-4*dt);
+        S.peace=Math.max(0,S.peace-.5*dt);
+        if(S.peace<25&&S.peace>0&&!thinWarned){ thinWarned=true; toast('平安若只靠自己持守，就会变薄。不断从圣灵领受，它就更新。',3600); }
         if(S.sick>=95){ S.sick=95; if(!capped){ capped=true; toast('病菌还在你身上，可是你还走得动。',3000); } } }
       // 病菌墙：一波比一波厚
       wave-=dt;
@@ -452,6 +459,16 @@ function journey(mode,idx,next){
       spawn-=dt;
       if(spawn<=0 && prog<.95){ spawn=rnd(.7,1.4)/(L.rate*(1+prog*.6));
         germs.push({x:W+30,y:rnd(50,H-40),r:rnd(17,24),label:pick(L.types),vx:-rnd(60,120)-speed*.6,vy:0,ph:Math.random()*6,w:rnd(1,2.5)}); }
+      // 从上面来的光（4:8），抓住就加厚平安（4:9）
+      if(back){ lightT-=dt*(S.waiting?2.2:1);
+        if(lightT<=0 && prog<.96){ lightT=rnd(1.4,2.4); lights.push({x:rnd(W*.4,W),y:-20,label:pick(GOOD),vx:-rnd(30,70),vy:rnd(40,70)}); }
+        for(let i=lights.length-1;i>=0;i--){ const l=lights[i]; l.x+=l.vx*dt-speed*.3*dt; l.y+=l.vy*dt;
+          if(S.waiting){ l.x+=(px-l.x)*dt*.8; l.y+=(py-l.y)*dt*.8; }
+          if(Math.hypot(l.x-px,l.y-py)<34){ lights.splice(i,1); S.peace=Math.min(100,S.peace+20); S.received++; thinWarned=false;
+            pop(pops,px,py-56,`抓住「${l.label}」，平安加厚了`,C.lamp);
+            if(S.received===1) toast('「这些事你们都要思念……赐平安的神就必与你们同在。」腓立比书 4:8-9',4200);
+            continue; }
+          if(l.y>H+30||l.x<-40) lights.splice(i,1); } }
       // 圣灵的供应：油和水
       supply-=dt;
       if(supply<=0 && prog<.96){ supply=rnd(1.8,3);
@@ -466,14 +483,8 @@ function journey(mode,idx,next){
       for(let i=germs.length-1;i>=0;i--){ const g=germs[i];
         g.x+=g.vx*dt; g.vy*=.95; g.y+=(g.vy+(g.wall?Math.sin(t*g.w+g.ph)*4:Math.sin(t*g.w+g.ph)*18))*dt; g.ph+=dt*.6;
         const d=Math.hypot(g.x-px,g.y-py);
-        if(shield && d<g.r+40){ germs.splice(i,1); S.spirit=clamp(S.spirit-7,0,100); pop(pops,g.x,g.y,'平安保守',C.lamp); continue; }
-        const o=orbs.find(o=>!o.rotten&&Math.hypot(g.x-o.x,g.y-o.y)<g.r+13);
-        if(o){ germs.splice(i,1); o.hp--;
-          if(o.hp<=0){ o.rotten=true; const bad=VIRTUE[o.name].rot; S.rotted.push(o.name);
-            pop(pops,o.x,o.y-16,`「${o.name}」腐败成了「${bad}」`,C.germ);
-            if(S.rotted.length===1) toast('靠人持守的美德，也会被病菌感染。有人的地方，就有病菌。',3600);
-            germs.push({x:W+30,y:rnd(50,H-40),r:22,label:bad,vx:-rnd(70,110)-speed*.6,vy:0,ph:0,w:1.5}); }
-          else pop(pops,o.x,o.y-16,`「${o.name}」挡住了，却也染上了`,'#e2a6d2');
+        if(shield && d<g.r+40){ germs.splice(i,1); S.peace=Math.max(0,S.peace-6); pop(pops,g.x,g.y,S.peace>0?'平安保守':'平安被打穿了',S.peace>0?C.lamp:C.fever);
+          if(S.peace<=0){ S.peaceBroken++; flash=.25; }
           continue; }
         if(d<g.r+14){ germs.splice(i,1); const hit=back?5:7; S.sick=clamp(S.sick+hit,0,back?95:(L.fever?99:90)); S.infect+=hit; flash=.35; pop(pops,px,py-34,'冲过去，染上了「'+g.label+'」',C.fever); continue; }
         if(g.x<-40) germs.splice(i,1);
@@ -503,14 +514,13 @@ function journey(mode,idx,next){
       germs.forEach(g=>drawGerm(ctx,g));
       for(let i=slashes.length-1;i>=0;i--){ const sl=slashes[i]; sl.life-=dt; if(sl.life<=0){ slashes.splice(i,1); continue; }
         ctx.strokeStyle=`rgba(235,229,214,${sl.life*4})`; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(sl.x1,sl.y1); ctx.lineTo(sl.x2,sl.y2); ctx.stroke(); }
-      if(shield){ ctx.save(); ctx.globalAlpha=.25+S.spirit/300; ctx.strokeStyle=C.lamp; ctx.fillStyle='rgba(242,193,78,.12)'; ctx.lineWidth=2.5;
-        ctx.beginPath(); ctx.arc(px,py-4,40,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
-        ctx.fillStyle=C.lamp; ctx.font='12px '+FONT; ctx.textAlign='center'; ctx.fillText('平安',px,py-48); }
-      orbs.forEach((o,i)=>{ if(o.rotten) return; const a=t*1.1+i/orbs.length*Math.PI*2;
-        o.x=px+Math.cos(a)*62; o.y=py-4+Math.sin(a)*52;
-        ctx.fillStyle=o.hp>1?'rgba(242,193,78,.2)':'rgba(185,95,163,.3)'; ctx.strokeStyle=o.hp>1?C.lamp:C.germ;
-        ctx.beginPath(); ctx.arc(o.x,o.y,11,0,Math.PI*2); ctx.fill(); ctx.stroke();
-        ctx.fillStyle=o.hp>1?C.lamp:'#e2a6d2'; ctx.font='11px '+FONT; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(o.name.slice(0,2),o.x,o.y+1); ctx.textBaseline='alphabetic'; });
+      if(shield){ const pr=S.peace/100; ctx.save(); ctx.globalAlpha=.3+pr*.6; ctx.strokeStyle=C.lamp; ctx.fillStyle=`rgba(242,193,78,${.05+pr*.12})`; ctx.lineWidth=1+pr*3;
+        ctx.beginPath(); ctx.arc(px,py-4,40,0,Math.PI*2); ctx.fill(); ctx.stroke();
+        if(pr<.35){ ctx.strokeStyle='rgba(17,23,38,.9)'; ctx.lineWidth=2; for(let c=0;c<4;c++){ const a0=c*1.6+.4; ctx.beginPath(); ctx.moveTo(px+Math.cos(a0)*40,py-4+Math.sin(a0)*40); ctx.lineTo(px+Math.cos(a0+.2)*30,py-4+Math.sin(a0+.2)*30); ctx.stroke(); } }
+        ctx.restore(); ctx.fillStyle=C.lamp; ctx.font='12px '+FONT; ctx.textAlign='center'; ctx.fillText(`平安 ${Math.round(S.peace)}`,px,py-50); }
+      for(const l of lights){ ctx.save(); ctx.shadowColor='rgba(242,193,78,.9)'; ctx.shadowBlur=16; ctx.fillStyle='rgba(242,193,78,.25)';
+        ctx.beginPath(); ctx.arc(l.x,l.y,18,0,Math.PI*2); ctx.fill(); ctx.restore();
+        ctx.fillStyle=C.lamp; ctx.font='500 12px '+FONT; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(l.label,l.x,l.y); ctx.textBaseline='alphabetic'; }
       // 病越重，身子越弯，最后是爬
       ctx.save(); ctx.translate(px,py); ctx.rotate(S.sick>70?(S.sick-70)/30*1.1:0); ctx.translate(-px,-py);
       drawTraveler(ctx,px,py+(S.sick>85?8:0),heavy,t*(1-S.sick/150),L.sea); ctx.restore();
@@ -597,7 +607,7 @@ function out3(){
 }
 function collapse(){
   const sick=S.sick; S.arriveSick=sick;
-  const how=sick<80?'walk':sick<95?'crawl':'carried';
+  const how=sick<80?'walk':sick<95?'crawl':'carried'; S.arriveHow=how;
   const scene={
     walk:['他拄着杖，一步一步走到保罗住的地方。敲了门，门一开，他就倒在门口。','倒在保罗门口'],
     crawl:['离城门还有一段路，他再也站不起来了。他用手和膝盖，一寸一寸地爬，终于爬到了罗马城门。','爬到罗马城门'],
@@ -666,52 +676,187 @@ function romeCard(i){
 }
 
 /* ================= 第二章 · 谦卑阶梯 ================= */
-const STEPS=[
-  {ph:'他本有神的形像',f:'仁爱',in:['「我的方案明明比较好。」这句话在心里转了很多遍。','他本有神的形像，却没有抓住不放。','如果对方的方案成功了，你会真心高兴吗？','主啊，教我看别人比自己强。'],sit:'同工会上，你的方案被否决了，大家选了另一位同工的方案。',up:'私下找人拉票，下次再翻案。',down:'真心帮助对方的方案做成。'},
-  {ph:'不以自己与神同等为强夺的',f:'喜乐',in:['被忽略的感觉，像一根小刺，扎在心里。','他与神同等，却不以为那是必须抓住的。','你做这件事，是为了被看见，还是为了这件事本身？','主啊，让我在没有人知道的地方，也能喜乐。'],sit:'活动办得很成功。台上大家感谢了别人，你的付出没有人提。',up:'找机会轻轻提一句：其实那部分是我做的。',down:'为对方被看见而真心欢喜。'},
-  {ph:'反倒虚己',f:'和平',in:['说实话，你心里早已经站了一边。','他反倒虚己，把自己倒空。','先放下「谁对谁错」，你听得见她们各自的伤吗？','主啊，使我不结党，只做使人和睦的人。'],sit:'友阿爹和循都基都来找你，要你评评理。',up:'站到有理的一边，壮大这一边的声势。',down:'不结党。先分别聆听，再邀请她们一起祷告。'},
-  {ph:'取了奴仆的形像',f:'忍耐',in:['自己做，五分钟就好；陪他做，要一个下午。','他取了奴仆的形像。奴仆的时间，不属于自己。','你的效率和他的成长，哪一样更重要？','主啊，把你的忍耐借给我。'],sit:'新来的同工做事很慢，一件事教了三次还是出错。',up:'拿过来自己做，又快又好。',down:'陪着他慢慢学。'},
-  {ph:'成为人的样式',f:'恩慈',in:['他说过的那些话，你到今天还记得一字不差。','他成为人的样式，走进伤害他的人中间。','如果那锅汤被拒绝了，你还愿意再煮一次吗？','主啊，你怎样恩待我，也让我这样恩待人。'],sit:'曾经当众批评过你的人生病住院了。',up:'心里暗暗说：这就是报应。',down:'煮一锅汤，送到他家门口。'},
-  {ph:'既有人的样子，就自己卑微',f:'良善',in:['没有人会发现的。推一推，就过去了。','他既有人的样子，就自己卑微。','承认之后，你最怕失去的是什么？','主啊，我宁可在人面前低一点，也不要在你面前不真实。'],sit:'事情出错了，你可以把责任推给一个不在场的同工。',up:'顺水推舟，反正他也有份。',down:'承认是自己的疏忽。'},
-  {ph:'存心顺服',f:'信实',in:['这件事太小了，小到没有人会记得。','他存心顺服，那不是做给人看的顺服。','在没有观众的时候，你是谁？','主啊，让我在最小的事上忠心。'],sit:'你答应了一件小事，又闷又没有人看见。',up:'找个理由推掉，反正没人会发现。',down:'默默把它做完。'},
-  {ph:'以至于死',f:'温柔',in:['你已经在心里写好了十条反驳。','他顺服以至于死，被骂的时候不还口。','你要的是被理解，还是要赢？','主啊，让我谦让的心叫众人知道（4:5）。'],sit:'有人在群组里误会你，说了很难听的话。',up:'写一篇长文，逐条反驳。',down:'私下温和地解释，不求赢。'},
-  {ph:'且死在十字架上',f:'节制',in:['这是你等了很久的机会。','他且死在十字架上。那是最没有面子的死法。','如果从此没有人知道你有这个恩赐，你还可以吗？','主啊，我放手。你要高举谁，就高举谁。'],sit:'有一个在众人面前显出你恩赐与资历的机会。',up:'抓住机会，好好表现。',down:'把机会让给一位更需要被建立的人。'}
+/* 第二章：代赎的阶梯。不是我们学着往下走，是基督为我们一级一级降到家里。
+   两条控制线：基督为我们降下的代赎；耶稣基督的灵在我们里面祷告（罗 8:26；加 4:6；腓 1:19）。
+   roles: child 孩子 / parent 父母 / carer 照顾年老父母的人 / elder 长辈 */
+const ROLES=[
+  {id:'child',n:'我是孩子',d:'小朋友或青少年'},
+  {id:'parent',n:'我是父母',d:'正在养育孩子'},
+  {id:'carer',n:'我在照顾年老的父母',d:'上有老、下有小的中间一代'},
+  {id:'elder',n:'我是长辈',d:'祖父母、年长的家人'},
+  {id:'all',n:'一家人一起玩',d:'四个角度全部显示，每人读自己那一段'}
 ];
+const RN={child:'孩子',parent:'父母',carer:'照顾者',elder:'长辈'};
+const STEPS=[
+  {ph:'他本有神的形像',f:'仁爱',field:'身份与价值',
+   grasp:'用成绩、收入、用处来证明自己值得被爱。',
+   role:{child:'考试退步了，你觉得爸妈看你的眼神都不一样了。',
+     parent:'孩子成绩不好，亲戚聚会时你抬不起头；工作不顺，你觉得自己不配撑起这个家。',
+     carer:'你为这个家付出了半辈子，兄弟姊妹却只记得你没做到的那一次。',
+     elder:'退休了，身体也不行了，你常说：「我老了，没用了，只会拖累你们。」'},
+   q:'你心里觉得，自己要做到什么，才值得被爱？',
+   spirit:'「阿爸！父！」我是你的孩子，不是我的成绩，也不是我的用处。（加 4:6）',
+   christ:'因为基督本有神的形像，却进到我们破损的形像里（西 1:15），所以我们的价值不是挣来的，是被赐的。',
+   pray:'主耶稣，你来到我们中间，因为我们本来就是你所爱的。',
+   act:'一家人轮流对一个人说：「就算你什么都没做到，你还是我们家的宝贝。」'},
+  {ph:'不以自己与神同等为强夺的',f:'温柔',field:'控制与夹在中间',
+   grasp:'抓紧控制权：我说了算。',
+   role:{child:'爸妈吵架的时候，都要你站在他们那一边。你夹在中间，好累。',
+     parent:'孩子穿什么、学什么、跟谁玩，你都要管。一放手，你就害怕。',
+     carer:'年老的爸爸不肯去看医生。为了到底谁来做决定，你们吵到摔门。',
+     elder:'儿女替你决定了住哪里、吃什么。你觉得自己的话已经没人听了。'},
+   q:'在家里，你最想抓住的是什么？',
+   spirit:'主啊，我放不下控制，因为我怕。',
+   christ:'因为最有权柄的那一位没有抓住权柄，所以我们家里的权力拉扯，可以在祂里面松开。',
+   pray:'主耶稣，你没有强夺。求你教我们松开彼此。',
+   act:'每个人说一件「这件事，我愿意让你自己决定」的小事。'},
+  {ph:'反倒虚己',f:'节制',field:'耗尽与倦怠',
+   grasp:'再撑一下，全部靠自己扛下来。',
+   role:{child:'爸妈都上班到很晚，你一个人吃晚饭，看手机看到睡着。',
+     parent:'白天上班，晚上还有家务和功课。如果你是单亲，连一个可以换手的人都没有。',
+     carer:'上有年老的父母，下有孩子，你夹在中间，已经好久没睡过一个整觉。',
+     elder:'你知道儿女很累，身体痛也不敢说，怕又多一个负担。'},
+   q:'你现在最累的是什么？可以说出来吗？',
+   spirit:'我已经没有力气了，连祷告也说不出来。（圣灵亲自用说不出来的叹息替我们祷告，罗 8:26）',
+   christ:'因为基督为我们成了贫穷，叫我们因祂的贫穷可以成为富足（林后 8:9），所以被掏空的人，没有被丢下。',
+   pray:'主耶稣，你倒空了自己，来扛我们扛不动的。',
+   act:'每个人说一件「这个星期我需要休息」的事，再一起想一个帮对方减轻一点的办法。'},
+  {ph:'取了奴仆的形像',f:'恩慈',field:'照顾与不公平',
+   grasp:'斤斤计较：凭什么都是我？',
+   role:{child:'你觉得家务都是你做，弟弟妹妹什么都不用做。',
+     parent:'你像是全家的佣人，却很少有人说一声谢谢。',
+     carer:'兄弟姊妹都说忙，照顾爸妈的事全落在你身上。年老的爸爸像个很难搞的大孩子，你又累又委屈。',
+     elder:'你需要人喂饭、帮你洗澡，觉得自己像个累赘，很难为情。'},
+   q:'在家里，你觉得哪里不公平？',
+   spirit:'「阿爸！父！」我不是奴仆，是你的儿女。（加 4:6-7）',
+   christ:'因为主人成了仆人，把我们从奴仆的身份赎出来成为儿女（加 4:7），所以服侍不再是困住我们的锁链。',
+   pray:'主耶稣，你先服侍了我们。被服侍不羞耻，服侍人也不卑贱。',
+   act:'一家人一起做一件家务，做完互相说一声谢谢。'},
+  {ph:'成为人的样式',f:'忍耐',field:'软弱、疾病与误解',
+   grasp:'不说了，反正说了也不懂。',
+   role:{child:'你心里难过，大人却说：「小孩子有什么好烦的？」',
+     parent:'青春期的孩子关上房门，不跟你说话。你不知道他在想什么。',
+     carer:'妈妈开始失智，同一个问题问你十遍，有时还认不出你。',
+     elder:'年轻人说的话、用的东西，你越来越跟不上，觉得自己被留在后面。'},
+   q:'家里有谁，你很想懂，却懂不了？',
+   spirit:'他听不懂我，我也听不懂他。主啊，你都懂。',
+   christ:'因为基督成为人，能体恤我们的软弱（来 4:15），所以有一位完全懂每一代的，我们也可以学着彼此懂。',
+   pray:'主耶稣，你懂小孩，也懂老人，你懂我们说不出口的话。',
+   act:'互相问一句：「最近有什么事让你难过，是我还不知道的？」然后只听，不急着回答。'},
+  {ph:'既有人的样子，就自己卑微',f:'良善',field:'面子、认错与和好',
+   grasp:'保住面子：我是大人、我是长辈，不用道歉。',
+   role:{child:'你做错了事，怕被骂，就说了谎。',
+     parent:'你冤枉了孩子，可是为了面子，说不出「对不起」。',
+     carer:'小时候受过的伤，年老的父母从来没有承认过。你心里还有怨。',
+     elder:'你知道当年对孩子太严厉了，可是一辈子都没开过口。'},
+   q:'有哪一句「对不起」，你一直说不出口？',
+   spirit:'我想说对不起，又说不出口。',
+   christ:'因为基督降卑到失去一切面子，所以认错不再是丢脸的事，和好也成为可能。',
+   guard:'和好是圣灵一步一步的工作。受伤的人不必马上原谅，也不必马上和好；基督已经先替我们担当了。',
+   pray:'主耶稣，你降卑到底。给我们说真话的勇气，也给受伤的人慢慢来的时间。',
+   act:'如果愿意，说一件「我其实做错了，但还没说」的事。还没准备好的，可以只在心里告诉主。'},
+  {ph:'存心顺服',f:'信实',field:'孝道、权柄与信任',
+   grasp:'用惧怕逼人听话，或者干脆谁也不听。',
+   role:{child:'爸妈说「我是为你好」，你却只想反抗。',
+     parent:'你要求孩子听话，可是你自己常常不听神的话。',
+     carer:'「孝顺」两个字压得你喘不过气：要做到多少才算够？',
+     elder:'你要儿女孝顺，心里其实是怕被丢下。'},
+   q:'你的「听话」，是出于爱，还是出于怕？',
+   spirit:'主啊，教我分辨，哪个是你的声音，哪个是我的恐惧。',
+   christ:'「因一人的顺从，众人也成为义了」（罗 5:19）。因为基督对父顺服到底，所以顺服可以从「怕」变成「信」。',
+   guard:'顺服是对天父，不是对伤害你的人。顺服不等于忍受家庭暴力。',
+   pray:'主耶稣，你顺服父到底。求你让我们家的顺服出于信，不是出于怕。',
+   act:'爸妈对孩子说一件「这件事我会听你的」；孩子对爸妈说一件「这件事我愿意信你」。'},
+  {ph:'以至于死',f:'和平',field:'失去与哀伤',
+   grasp:'假装没事，不哭，也不谈。',
+   role:{child:'你养的小狗死了，或是爷爷走了，大人却不跟你说清楚发生了什么。',
+     parent:'婚姻走到了尽头，你觉得一个家死掉了。',
+     carer:'你陪着父母走最后一段路，每天都在准备说再见。',
+     elder:'老朋友一个一个离开，你也开始想自己的那一天。'},
+   q:'你失去过什么，还没有好好哭过？',
+   spirit:'我不知道怎样说再见。',
+   christ:'因为基督进入死亡，败坏了掌死权的，释放了一生因怕死而为奴仆的人（来 2:14-15），所以死亡不是最后一句话。',
+   pray:'主耶稣，你走进了死亡，所以我们的哀伤里有你同在。',
+   act:'一起说出一个已经离开的人或动物的名字，再说一件你记得他的事。'},
+  {ph:'且死在十字架上',f:'喜乐',field:'暴力、羞辱与代代相传的伤',
+   grasp:'用打骂和羞辱来管教，因为「我小时候也是这样长大的」。',
+   role:{child:'被打、被骂「没用」的时候，你以为是自己不好。',
+     parent:'你发誓不要像你的爸妈那样，可是一生气，那些话还是冲口而出。',
+     carer:'你一边照顾当年打骂你的父母，一边心里很矛盾。',
+     elder:'你也是这样被打大的。一代传一代，你从来不知道还有别的方法。'},
+   q:'有什么伤，你希望到你这一代为止？',
+   spirit:'主啊，让这伤到我这一代为止。',
+   christ:'因为基督在十字架上为我们受了咒诅（加 3:13），代代相传的伤可以被截断；祂轻看羞辱，是因为那摆在前面的喜乐（来 12:2）。',
+   guard:'暴力不是你的错。顺服和饶恕都不等于继续留在危险里。',
+   help:true,
+   pray:'主耶稣，你背走了我们的羞辱。求你让我们家成为截断咒诅的一代。',
+   act:'如果安全，对家里的一个人说一句你从小就希望听到的话。'}
+];
+const HELP=`<div class="reply flesh" style="gap:6px;font-size:14px">
+  <p><b>如果你或家人现在正在受伤害</b></p>
+  <p>先让自己和孩子到安全的地方，并告诉一位可以信任的人：亲人、老师、牧者或邻居。</p>
+  <p>有紧急危险：拨打 <b>110</b></p>
+  <p>全国妇联妇女维权公益服务热线：<b>12338</b></p>
+  <p>共青团青少年服务台：<b>12355</b></p>
+  <p>心理援助热线：<b>12356</b>（24 小时）</p>
+  <p>可以向人民法院申请「人身安全保护令」（《反家庭暴力法》），并保存照片、就医记录、报警回执等证据。</p>
+  <p class="note">各地的服务情况不一样。如果一处帮不上，请再找下一处，也请继续告诉你信任的人。</p></div>`;
 function act2(){
-  setAct('第二章 · 基督的心','谦卑阶梯');
-  story({eyebrow:'第二章',title:'向下扎根，向上结果',
-    paras:['果子长在树上，看起来是向上结出来的。可是一棵树能结多少果子，要看它的根向下扎得多深。','这一章，你要跟着基督的路<b>向下走</b>九级阶梯。每走一级，根就扎深一段，一种果子就在谦卑中结出来。','「向上抓」点一下就行，很快，可是阶梯会剧烈摇晃。「向下走」要<b>按住不放大约二十秒</b>。按住的时候，心里会浮现几句话，慢慢读，慢慢想。累了可以放手休息，已经走下的不会消失。谦卑本来就要花时间。'],
-    verses:[['凡事不可结党，不可贪图虚浮的荣耀；只要存心谦卑，各人看别人比自己强。各人不要单顾自己的事，也要顾别人的事。你们当以基督耶稣的心为心。','腓立比书 2:3-5']],
-    btn:'走下第一级',next:()=>stair(0)});
+  setAct('第二章 · 基督的心','代赎的阶梯');
+  story({eyebrow:'第二章',title:'祂一级一级降下来',
+    paras:['基督之歌（2:6-8）是一道往下的阶梯。这不是要我们学着往下走，因为我们学不来。这是<b>基督为我们</b>一级一级降下来，降到人生最难的地方，降到我们家里。',
+      '你现在能走这一段，是因为<b>耶稣基督的灵</b>正在你里面不住地祷告。有时候那只是说不出来的叹息，可是祂一直在。',
+      '每一级，阶梯底下的家里都有一个处境。长按「<b>让祂降下来</b>」大约二十秒，基督的光会降到那里。按住的时候，会浮现几句话：一句经文，一个问题，一句圣灵在你里面的祷告，还有基督为我们成就的事。累了可以放手，降下的光不会退回。',
+      '「我自己来」点一下就行，可是整道阶梯会剧烈摇晃。那是「强夺」，把祂挡在外面。'],
+    verses:[['你们当以基督耶稣的心为心：他本有神的形像，不以自己与神同等为强夺的；反倒虚己，取了奴仆的形像，成为人的样式；既有人的样子，就自己卑微，存心顺服，以至于死，且死在十字架上。','腓立比书 2:5-8'],['他本来富足，却为你们成了贫穷，叫你们因他的贫穷可以成为富足。','哥林多后书 8:9'],['况且我们的软弱有圣灵帮助，我们本不晓得当怎样祷告，只是圣灵亲自用说不出来的叹息替我们祷告。','罗马书 8:26']],
+    btn:'选择你的角色',next:pickRole});
+}
+function pickRole(){
+  setAct('第二章 · 基督的心','你是谁？');
+  go(()=>{
+    const w=page(`<div class="eyebrow">第二章 · 开始之前</div><h2>你是谁？</h2>
+      <div class="story"><p>同一道阶梯，每一代看见的处境都不一样。选一个最接近你的角色。</p></div>
+      <div class="opts">${ROLES.map(r=>`<button class="opt" data-r="${r.id}"><span class="tag">${r.d}</span>${r.n}</button>`).join('')}</div>`);
+    w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ S.role=b.dataset.r; stair(0); });
+  });
 }
 function stairsSVG(k){
   const rows=STEPS.map((st,i)=>{const x=i*14,y=14+i*30,on=i<k,cur=i===k;
-    return `<rect x="${x}" y="${y}" width="${200-x}" height="22" rx="3" fill="${on?'#2c3d2c':C.night2}" stroke="${on?C.leaf:cur?C.lamp:C.line}"/>
+    return `<rect x="${x}" y="${y}" width="${200-x}" height="22" rx="3" fill="${on?'#3a3420':C.night2}" stroke="${on?C.lamp:cur?C.lamp:C.line}" stroke-opacity="${on?.8:1}"/>
       <text x="${x+8}" y="${y+15}" font-size="10" fill="${on||cur?C.text:C.muted}" font-family="Noto Serif SC,serif">${st.ph}</text>`}).join('');
-  const dot=k<9?`<circle id="fig" cx="${k*14+10}" cy="${14+k*30-5}" r="4.5" fill="${C.lamp}"/>`
-    :`<g stroke="${C.lamp}" stroke-width="3"><line x1="160" y1="288" x2="160" y2="322"/><line x1="148" y1="298" x2="172" y2="298"/></g><circle cx="140" cy="318" r="4.5" fill="${C.lamp}"/>`;
-  return `<svg viewBox="0 0 200 326" role="img" aria-label="谦卑阶梯：第 ${Math.min(k,9)}/9 级">${rows}${dot}</svg>`;
+  const house=`<g transform="translate(150,292)" opacity="${k>=9?1:.7}"><path d="M-16 6 L0 -8 L16 6 Z" fill="${k>=9?C.lamp:C.earth}"/><rect x="-12" y="6" width="24" height="18" fill="${k>=9?'#3a3420':C.night2}" stroke="${C.earth}"/><rect x="-3" y="13" width="6" height="11" fill="${C.earth}"/></g>`;
+  const light=k<9?`<circle id="fig" cx="${k*14+10}" cy="${14+k*30-5}" r="6" fill="${C.lamp}" style="filter:drop-shadow(0 0 6px ${C.lamp})"/>`
+    :`<g stroke="${C.lamp}" stroke-width="3"><line x1="104" y1="284" x2="104" y2="318"/><line x1="94" y1="294" x2="114" y2="294"/></g>`;
+  return `<svg viewBox="0 0 200 326" role="img" aria-label="代赎的阶梯：第 ${Math.min(k,9)}/9 级">${rows}${house}${light}</svg>`;
 }
 function stair(k){
   if(k>=STEPS.length) return cross();
-  const s=STEPS[k];
-  setAct('第二章 · 谦卑阶梯',`第 ${k+1}/9 级 · 谦卑中的${s.f}`);
+  const s=STEPS[k], role=S.role||'all';
+  setAct('第二章 · 代赎的阶梯',`第 ${k+1}/9 级 · ${s.field}`);
   go(()=>{
     decay=false;
     const HOLD=20;
+    const scene=role==='all'
+      ?Object.keys(RN).map(r=>`<p><b style="color:var(--lamp-dim)">${RN[r]}：</b>${s.role[r]}</p>`).join('')
+      :`<p>${s.role[role]}</p>`;
     const w=page(`<div class="ladder"><div class="stairs" id="st">${stairsSVG(k)}</div>
       <div style="display:grid;gap:14px">
         <div class="eyebrow">第 ${k+1} 级 · ${s.ph}</div>
-        <h2>谦卑中的${s.f}</h2>
-        <div class="story"><p>${s.sit}</p></div>
+        <h2>${s.field}</h2>
+        <div class="story" style="display:grid;gap:8px">${scene}</div>
         <div class="opts">
-          <button class="opt" id="up"><span class="tag">↑ 向上抓 · 点一下</span>${s.up}</button>
-          <button class="opt spirit hold" id="down"><span class="fill"></span><span class="tag">↓ 向下走 · 按住不放</span>${s.down}</button>
+          <button class="opt" id="up"><span class="tag">↑ 我自己来 · 点一下</span>${s.grasp}</button>
+          <button class="opt spirit hold" id="down"><span class="fill"></span><span class="tag">↓ 让祂降下来 · 按住不放</span>让基督降到我们家的这个地方。</button>
         </div>
-        <div class="holdtime" id="ht">按住「向下走」，慢慢往下。</div>
+        <div class="holdtime" id="ht">按住「让祂降下来」。</div>
         <div class="reflect" id="rf"></div>
         <div id="msg" class="note"></div>
       </div></div>`);
+    const lines=[
+      {t:`「${s.ph}……」`},
+      {t:s.q},
+      {t:'圣灵在你里面祷告：'+s.spirit,c:'pray'},
+      {t:s.christ,c:'christ'}];
     const up=w.querySelector('#up'), down=w.querySelector('#down'), fill=down.querySelector('.fill'), msg=w.querySelector('#msg'), rf=w.querySelector('#rf'), ht=w.querySelector('#ht');
     let holding=false, p=0, ok=false, shown=0, lock=false;
     up.onclick=()=>{
@@ -722,27 +867,31 @@ function stair(k){
       w.querySelectorAll('#st rect').forEach(r=>{ const bb=r.getBBox(); r.setAttribute('transform',`rotate(${rnd(-9,9)} ${bb.x+bb.width/2} ${bb.y+bb.height/2}) translate(${rnd(-6,6)} ${rnd(-4,4)})`); });
       setTimeout(()=>w.querySelectorAll('#st rect').forEach(r=>r.removeAttribute('transform')),1100);
       try{ navigator.vibrate?.([120,60,200,60,120]); }catch(e){}
-      msg.innerHTML='<span style="color:#e2a6d2">整道阶梯剧烈摇晃，差点把你甩下去。这是「强夺」，不是基督的心（2:6）。「'+s.f+'」枯萎了，刚才向下走的路也退回了一半。</span>';
+      msg.innerHTML='<span style="color:#e2a6d2">整道阶梯剧烈摇晃。「我自己来」把祂挡在了外面，这就是「强夺」（2:6）。「'+s.f+'」枯萎了，祂降下的光也退回了一半。</span>';
     };
     down.addEventListener('pointerdown',e=>{e.preventDefault();down.setPointerCapture?.(e.pointerId);holding=true;if(!ok) msg.innerHTML='';});
     ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>down.addEventListener(ev,()=>{holding=false}));
     down.addEventListener('contextmenu',e=>e.preventDefault());
     down.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' ') { e.preventDefault(); holding=true; } });
     down.addEventListener('keyup',()=>{holding=false});
-    const fig=()=>w.querySelector('#fig');
     sceneTick=dt=>{
       if(ok) return;
       if(holding) p=Math.min(1,p+dt/HOLD);
       fill.style.width=p*100+'%';
-      const f=fig(); if(f){ f.setAttribute('cx',k*14+10+p*14); f.setAttribute('cy',14+k*30-5+p*30); }
+      const f=w.querySelector('#fig'); if(f){ f.setAttribute('cx',k*14+10+p*14); f.setAttribute('cy',14+k*30-5+p*30); }
       const left=Math.ceil(HOLD*(1-p));
-      ht.textContent=holding?`向下走……还有 ${left} 秒`:(p>0?`你停下来了。准备好了，再按住继续（还有 ${left} 秒）。`:'按住「向下走」，慢慢往下。');
-      const want=Math.min(s.in.length,Math.floor(p*HOLD/5)+(p>0?1:0));
-      while(shown<want){ const el=document.createElement('p'); el.className='rise'+(shown===s.in.length-1?' pray':''); el.textContent=s.in[shown]; rf.appendChild(el); shown++; }
+      ht.textContent=holding?`祂正在降下来……还有 ${left} 秒`:(p>0?`你停下来了。准备好了，再按住（还有 ${left} 秒）。`:'按住「让祂降下来」。');
+      const want=Math.min(lines.length,Math.floor(p*HOLD/5)+(p>0?1:0));
+      while(shown<want){ const L=lines[shown], el=document.createElement('p'); el.className='rise'+(L.c?' '+L.c:''); el.textContent=L.t; rf.appendChild(el); shown++; }
       if(p>=1){ ok=true; holding=false; S.obey++; S.roots=Math.min(9,S.roots+1); fruit(s.f,+1); S.spirit=clamp(S.spirit+5,0,100);
         up.disabled=true; down.disabled=true; ht.textContent='';
         w.querySelector('#st').innerHTML=stairsSVG(k+1);
-        msg.innerHTML=`<div class="rise" style="display:grid;gap:12px"><span style="color:var(--leaf)">🌱 根向下扎深了一段。谦卑中的「${s.f}」结出来了。</span><button class="btn" id="nx">${k<8?'再往下一级':'走到最底'}</button></div>`;
+        msg.innerHTML=`<div class="rise" style="display:grid;gap:12px">
+          <span style="color:var(--leaf)">🌱 基督降到了这里。圣灵在这个家里结出了「${s.f}」。</span>
+          ${s.guard?`<div class="reply spirit"><p>${s.guard}</p></div>`:''}
+          ${s.help?HELP:''}
+          <div class="reflect"><p class="pray">一起祷告：${s.pray}</p><p>一起做：${s.act}</p></div>
+          <button class="btn" id="nx">${k<8?'祂再往下一级':'到十字架那里'}</button></div>`;
         msg.querySelector('#nx').onclick=()=>stair(k+1); }
     };
   });
@@ -751,7 +900,7 @@ function cross(){
   setAct('第二章 · 十字架','现在，什么都不用做');
   go(()=>{
     const w=page(`<div class="eyebrow">第二章 · 最底一级</div><h2>且死在十字架上</h2>
-      <div class="story"><p>你走到了最低处。你的根扎到了最深处。</p><p><b>现在，什么都不用做。</b>不要按任何按钮，只要等。</p></div>
+      <div class="story"><p>祂降到了最低处，降到了十字架上，为我们。</p><p><b>现在，什么都不用做。</b>不要按任何按钮，只要等。</p></div>
       <div id="lift" style="display:grid;gap:12px"></div>`);
     const lines=[['所以神将他升为至高，','2:9'],['又赐给他那超乎万名之上的名，','2:9'],['叫一切在天上的、地上的，和地底下的，因耶稣的名无不屈膝，','2:10'],['无不口称耶稣基督为主，使荣耀归与父神。','2:11']];
     const box=w.querySelector('#lift'); let i=0;
@@ -759,8 +908,8 @@ function cross(){
       if(i<lines.length){ const d=document.createElement('div'); d.className='verse rise'; d.innerHTML=`${lines[i][0]}<cite>腓立比书 ${lines[i][1]}</cite>`; box.appendChild(d); i++; }
       else { clearInterval(timer);
         const d=document.createElement('div'); d.className='rise'; d.style.cssText='display:grid;gap:12px';
-        d.innerHTML=`<p class="story" style="font-family:var(--serif)">高举是神做的，不是人爬上去的。果子也是一样：它是结出来的，不是做出来的。</p>
-          ${V('凡所行的，都不要发怨言、起争论，使你们无可指摘，诚实无伪……你们显在这世代中，好像明光照耀。','腓立比书 2:14-15')}
+        d.innerHTML=`<p class="story" style="font-family:var(--serif)">高举是神做的，不是人爬上去的。果子也一样，是圣灵结出来的，不是我们做出来的。</p>
+          ${V('……就当恐惧战兢，作成你们得救的工夫。因为你们立志行事，都是神在你们心里运行，为要成就他的美意。','腓立比书 2:12-13')}
           <button class="btn" id="nx">进入第三章</button>`;
         box.appendChild(d); d.querySelector('#nx').onclick=act3; }
     },2200);
@@ -789,7 +938,8 @@ function act3(){
     paras:['保罗曾经有一张很漂亮的履历：第八天受割礼、以色列族、便雅悯支派、法利赛人、热心、律法上的义无可指摘。今天的履历换了名字：名校、大公司、豪宅区、头衔、服事年资……',
       '这些东西不是一件一件来的。它们一排一排、一个方阵一个方阵地迎面而来，闪闪发亮。碰到你，就像蜘蛛网一样缠在身上，越缠越多，你就越跑越慢。',
       '靠自己用力挣脱，只会越缠越紧。要松开，就要<b>伸手抓住从上面来的</b>，也就是 4:8 那些金色的光：真实、可敬、公义、清洁、可爱、有美名、德行、称赞。手里抓住了新的，旧的就松开了。<b>长按「等候」</b>，这些光会来得更多，也会向你靠近。',
-      '最深的一层是「<b>自以为义</b>」。它不是你抓住什么美德就能松开的。'],
+      '最深的一层是「<b>自以为义</b>」。它不是你抓住什么美德就能松开的。',
+      '这不是一场靠意志力的赛跑。你能跑，是因为你先被基督得着（3:12），也因为祂的灵在你里面（3:3）。'],
     verses:[['这不是说我已经得着了，已经完全了；我乃是竭力追求，或者可以得着基督耶稣所以得着我的。','腓立比书 3:12']],
     extra:'<p class="note">操作：拖动或 ↑↓ 移动，碰到金色的光就抓住。背后有人叫你时，不要回头。</p>',
     btn:'起跑',next:runner});
@@ -911,11 +1061,15 @@ function finishRun(){
 /* ================= 第四章 · 回程 ================= */
 function returnStart(){
   setAct('第四章 · 回程','带着喜乐的信回家');
-  S.burdens=['忧虑','敌对','不同心']; S.sick=Math.min(S.sick,15); hud();
-  S.virtues=[...S.thoughts].map(n=>({name:n,hp:2,rotten:false,x:0,y:0}));
+  S.burdens=['忧虑','敌对','不同心']; S.sick=Math.min(S.sick,15); S.peace=70; hud();
   story({eyebrow:'第四章',title:'同一条路，不同的人',
-    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。','可是刚走出罗马，那三块旧石头又回到你背上：<b>忧虑、敌对、不同心</b>。路上的病菌也还在。','路上一样躲不过，一样要争战，油和水也一样会迎面送来。这一次你还多了两样东西可以抵挡病菌。一样是<b>平安</b>：长按「等候」就会举起盾牌，病菌碰到就消散，等候时病也会慢慢好转。另一样是你在第三章接住的<b>思念</b>（4:8），它们会围着你转，替你挡住病菌。'+(S.thoughts.size?'':'（你在第三章没有接住任何思念。）'),'可是要留心：思念是靠人持守的。它们挡住病菌，自己也会被感染，最后腐败掉。只有神所赐的平安不会腐败。'],
-    verses:[['所以我越发急速打发他去，叫你们再见他就可以喜乐，我也可以少些忧愁。','腓立比书 2:28'],['神所赐出人意外的平安，必在基督耶稣里保守你们的心怀意念。','腓立比书 4:7']],
+    paras:['保罗写好了一封信，交给以巴弗提带回腓立比。',
+      '同样一千公里的路，同样的病菌：结党、纷争、怨言。三块旧石头也回到你背上：<b>忧虑、敌对、不同心</b>。',
+      '不同的是你。你领受了这封信：「我活着就是基督」（第一章）；基督为我们一级一级降下来（第二章）；不是靠自己的义，而是被基督得着，在祂的灵里向着标竿直跑（第三章）。',
+      '而且「<b>主已经近了</b>」（4:5）。你走的，是基督的日子来临之前的路。',
+      '路上一样躲不过、一样要争战，油和水也一样会迎面送来。不同的是：<b>平安</b>一开始就守着你。病菌会把平安一层一层打掉；从上面会不断飘下金色的光，就是 4:8 那些真实、可敬、公义的事。抓住一个，平安就加厚一层。长按「等候」，光会来得更多，也会向你靠近。',
+      '平安若只靠自己持守，会慢慢变薄；不断从圣灵领受，它就不断更新。'],
+    verses:[['所以我越发急速打发他去，叫你们再见他就可以喜乐，我也可以少些忧愁。','腓立比书 2:28'],['神所赐出人意外的平安，必在基督耶稣里保守你们的心怀意念。','腓立比书 4:7'],['我们却是天上的国民，并且等候救主，就是主耶稣基督从天上降临。他要按着那能叫万有归服自己的大能，将我们这卑贱的身体改变形状，和他自己荣耀的身体相似。','腓立比书 3:20-21']],
     extra:'<p class="note">「保守」原文是驻军守城的字：平安像卫兵一样，守着你的心。</p>',
     btn:'出发',next:back1});
 }
@@ -933,26 +1087,73 @@ function back2(){
       {kind:'flesh',text:'心里开始计划反击。',fruit:'信实',reply:'你的拳头握紧了，心也跟着缩紧了。'},
       {kind:'flesh',text:'害怕。也许低调一点，别让人知道我们是信徒。',fruit:'信实',reply:'惧怕像雾，让你看不清前面的路。'},
       {kind:'spirit',text:'想起保罗在锁链中的样子：我们是天上的国民，不怕敌人的惊吓。',fruit:'信实',burden:'-敌对',reply:'「敌对」这块石头放下了。敌人还在，惧怕却不能再掌管你。',verse:['我们却是天上的国民，并且等候救主，就是主耶稣基督从天上降临。','腓立比书 3:20']}
-    ],next:()=>journey('back',1,back3)});
+    ],next:()=>journey('back',1,()=>journey('back',2,meditate))});
 }
-function back3(){
-  choice({eyebrow:'第四章 · 第三站',title:'不同心',situation:'腓立比就在前面了。你手里握着保罗的信，想起友阿爹和循都基。',
+/* 进城之前：思念（λογίζεσθε）。八样各约 5 秒，按住约 40 秒 */
+const APPLY={
+  '真实':'关于友阿爹和循都基，哪些是真实的？哪些只是传言？',
+  '可敬':'她们两位身上，有什么是值得尊敬的？',
+  '公义':'在神面前，什么对两边都公道？不是谁赢谁输。',
+  '清洁':'我去见她们的动机清洁吗？是为了基督，还是为了证明自己对？',
+  '可爱':'她们身上，有什么是叫人生出爱来的？',
+  '有美名':'关于她们，我能说出什么好话，是讲出来就造就人的？',
+  '德行':'她们曾经活出过什么美好的样子？',
+  '称赞':'她们曾「在福音上与我一同劳苦」（4:3）。这值得称赞。'
+};
+function meditate(){
+  setAct('第四章 · 腓立比城外','思念');
+  go(()=>{
+    decay=false;
+    const HOLD=40;
+    const w=page(`<div class="eyebrow">第四章 · 进城之前</div><h2>这些事你们都要思念</h2>
+      <div class="story"><p>腓立比就在眼前了。以巴弗提在城外停下来。进去以前，他要先把心安放好。</p>
+      <p class="note">「思念」原文是 λογίζεσθε，意思是仔细地算、定意地想。保罗在 3:13「我不是<b>以为</b>自己已经得着了」也用了同一个字。这需要时间。</p></div>
+      <button class="opt spirit hold" id="hold"><span class="fill"></span><span class="tag">按住不放 · 约四十秒</span>在圣灵里，一样一样地思念。</button>
+      <div class="holdtime" id="ht">按住，开始思念。</div>
+      <div class="reflect" id="rf"></div>
+      <div id="out"></div>`);
+    const hold=w.querySelector('#hold'), fill=hold.querySelector('.fill'), rf=w.querySelector('#rf'), ht=w.querySelector('#ht'), out=w.querySelector('#out');
+    let holding=false,p=0,ok=false,shown=0;
+    hold.addEventListener('pointerdown',e=>{e.preventDefault();hold.setPointerCapture?.(e.pointerId);holding=true});
+    ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>hold.addEventListener(ev,()=>{holding=false}));
+    hold.addEventListener('contextmenu',e=>e.preventDefault());
+    hold.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); holding=true; } });
+    hold.addEventListener('keyup',()=>{holding=false});
+    sceneTick=dt=>{
+      if(ok) return;
+      if(holding){ p=Math.min(1,p+dt/HOLD); S.peace=Math.min(100,S.peace+dt*1.5); }
+      fill.style.width=p*100+'%';
+      const left=Math.ceil(HOLD*(1-p));
+      ht.textContent=holding?`思念中……还有 ${left} 秒`:(p>0?`你停下来了。准备好了，再按住（还有 ${left} 秒）。`:'按住，开始思念。');
+      const want=Math.min(GOOD.length,Math.floor(p*HOLD/5)+(p>0?1:0));
+      while(shown<want){ const n=GOOD[shown], v=VIRTUE[n], el=document.createElement('p'); el.className='rise';
+        el.innerHTML=`<b style="color:var(--lamp)">${n}</b> <span class="note">${v.gr}：${v.m}</span><br>${APPLY[n]}`; rf.appendChild(el); shown++; S.thoughts.add(n); }
+      if(p>=1){ ok=true; holding=false; hold.disabled=true; ht.textContent='';
+        out.innerHTML=`<div class="rise" style="display:grid;gap:12px">${V('你们在我身上所学习的、所领受的、所听见的、所看见的，这些事你们都要去行，赐平安的神就必与你们同在。','腓立比书 4:9')}
+          <button class="btn" id="nx">进城</button></div>`;
+        out.querySelector('#nx').onclick=arrive; out.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+    };
+  });
+}
+function arrive(){
+  setAct('腓立比','回到教会');
+  choice({eyebrow:'第四章 · 回到腓立比',title:'不同心',situation:'你一进城，就有人拉着你说：「你知道吗？友阿爹和循都基又……」你手里握着保罗的信。',
     options:[
-      {kind:'flesh',text:'先去找有理的那一位，告诉她保罗是站在她那边的。',fruit:'仁爱',reply:'你差点把一封和好的信，用成了结党的武器。'},
-      {kind:'flesh',text:'当众宣读保罗的话，让她们两个下不了台。',fruit:'温柔',reply:'对的话，用错了方式。'},
-      {kind:'spirit',text:'分别去见她们，温柔地说：保罗劝我们在主里同心，我愿意陪你们一起走这一步。',fruit:'仁爱',burden:'-不同心',reply:'「不同心」这块石头放下了。你没有替她们解决问题，只是把她们交托给神，自己也愿意陪她们走。她们会不会同心，不在你手里。',verse:['我劝友阿爹和循都基要在主里同心。我也求你这真实同负一轭的，帮助这两个女人，因为她们在福音上曾与我一同劳苦。','腓立比书 4:2-3']}
-    ],next:()=>journey('back',2,ending)});
+      {kind:'flesh',text:'先听完这些话，再决定站哪一边。',fruit:'仁爱',reply:'你还没见到她们，心里已经结了一个党。'},
+      {kind:'flesh',text:'马上召集大家，当众宣读 4:2，让她们两个下不了台。',fruit:'温柔',reply:'对的话，用错了方式。你差点把一封和好的信，用成了结党的武器。'},
+      {kind:'spirit',text:'先把她们交给那位也为她们降下来的基督。然后分别去见她们，带着谦让的心（4:5），对每一位说：「保罗记得你曾与他一同在福音上劳苦。」',fruit:'仁爱',burden:'-不同心',
+       reply:'「不同心」这块石头放下了。你没有替她们解决问题，也不必解决。你只是带着从神来的平安，来到她们中间。她们会不会同心，在神手里。',
+       verse:['我劝友阿爹和循都基要在主里同心。我也求你这真实同负一轭的，帮助这两个女人，因为她们在福音上曾与我一同劳苦。','腓立比书 4:2-3']}
+    ],next:ending});
 }
 
 /* ================= 结局 ================= */
 const LETTERS=['罗马书','哥林多前书','哥林多后书','加拉太书','以弗所书','腓立比书','歌罗西书','帖撒罗尼迦前书','帖撒罗尼迦后书','提摩太前书','提摩太后书','提多书','腓利门书'];
 function ending(){
   setAct('腓立比','信还没有读完');
-  const alive=S.virtues.filter(v=>!v.rotten).map(v=>v.name);
-  const rotted=S.virtues.filter(v=>v.rotten).map(v=>`${v.name}→${VIRTUE[v.name].rot}`);
   const N=t=>`<p class="story" style="font-family:var(--serif);font-size:16.5px;line-height:1.95">${t}</p>`;
   const beats=[
-    N(`以巴弗提回到了腓立比。${S.sick>40?'他身上还带着病菌，走路还有点喘。':'他的病好了一些，身上却还带着路上的病菌。'}${rotted.length?`他带回来的思念，有些已经腐败了：${rotted.join('、')}。`:''}`),
+    N(`以巴弗提回到了腓立比。${S.sick>40?'他身上还带着路上的病菌，走路还有点喘，':'他身上还带着路上的一些病菌，'}可是一路上，神所赐的平安守着他的心。`),
     N('主日，会众聚在一起。以巴弗提打开保罗的信，一句一句读出来。'),
     V('我每逢想念你们，就感谢我的神……因为从头一天直到如今，你们是同心合意地兴旺福音。','腓立比书 1:3-5'),
     V('你们就要意念相同，爱心相同，有一样的心思，有一样的意念，使我的喜乐可以满足。','腓立比书 2:2'),
@@ -983,10 +1184,16 @@ function ending(){
         <div class="reply" style="gap:6px;font-size:14.5px">
           <p>背回来的重担：${S.burdens.length?S.burdens.join('、'):'没有'}</p>
           <p>松开的资历：${S.dropped} 样　·　自以为义：${S.selfFree?'被基督得着，松开了':'还缠在身上'}</p>
-          <p>还在发光的思念：${alive.join('、')||'没有'}</p>
-          <p>腐败了的思念：${rotted.join('、')||'没有'}</p>
+          <p>回程领受的光：${S.received} 次　·　平安被打穿：${S.peaceBroken} 次</p>
           <p>根扎下的深度：${S.roots}/9　·　安静等候：${Math.round(S.waitSec)} 秒　·　击碎病菌：${S.kills} 个</p>
         </div>
+        <h2>同一条路，不同的人</h2>
+        <div style="overflow-x:auto"><table class="loop">
+          <tr><th></th><th>去程</th><th>回程</th></tr>
+          <tr><td>到达时</td><td>${{walk:'倒在保罗门口',crawl:'爬到罗马城门',carried:'被弟兄抬进罗马'}[S.arriveHow]||'病得几乎要死'}</td><td>走进腓立比，平安守着心怀意念</td></tr>
+          <tr><td>背着的</td><td>教会纷争的重担</td><td>保罗的信，和从神来的平安</td></tr>
+          <tr><td>靠的是</td><td>自己的热心</td><td>基督的代赎，在圣灵里得力</td></tr>
+        </table></div>
         <h2>下一段旅程</h2>
         <p class="note">保罗在新约留下了十三卷书信。每一卷背后都有一段路，也有一群还没有完成的人。</p>
         <div class="flist" style="grid-template-columns:repeat(auto-fill,minmax(96px,1fr))">
@@ -996,9 +1203,9 @@ function ending(){
         <ol class="q">
           <li><b>去程：</b>你现在心里背着什么重担？你所在的群体里，有哪些「病菌」正在弥漫？</li>
           <li><b>罗马：</b>保罗在锁链中怎样看见喜乐？在你最近的处境里，圣灵可能想让你看见什么？</li>
-          <li><b>阶梯：</b>九个「向下走」里，哪一个对你最难？为什么谦卑要花时间？</li>
+          <li><b>阶梯：</b>九级里，基督降到你家的哪一个地方，是你最需要祂的？</li>
           <li><b>奔跑：</b>你的背包里，哪一样「资历」最难放下？你会被什么声音叫得回头？</li>
-          <li><b>回程：</b>你接住的思念里，哪一样最容易腐败？它会变成什么？</li>
+          <li><b>回程：</b>你的平安最常被什么打穿？你从圣灵那里领受过什么，使它更新？</li>
           <li><b>未完：</b>如果你是友阿爹或循都基，听到自己的名字被读出来，你会怎样回应？</li>
         </ol>
         <div class="row"><button class="btn" id="again">再走一次</button><button class="btn ghost" id="nt">研经说明</button></div>`;
