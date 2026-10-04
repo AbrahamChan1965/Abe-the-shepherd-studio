@@ -1,0 +1,1478 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>把这信念给众弟兄听</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0a07; --panel:#17120c; --line:#3a2e20; --ink:#ecdfc6; --dim:#a09378; --faint:#6b604f;
+  --amber:#f2b552; --ember:#d9772b; --parch:#efe3c8; --parch-ink:#2b2116; --whisper:#a993d4;
+  --good:#9ccf8a; --bad:#e08a6a;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif}
+body{overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:860px;margin:0 auto}
+#hud{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;border-bottom:1px solid var(--line);font-size:14px;color:var(--dim);flex-wrap:wrap}
+#when{color:var(--ink);font-weight:600;letter-spacing:.05em}
+#res{display:flex;align-items:center;gap:12px}
+.res b{color:var(--amber);font-size:16px}
+.bar{display:inline-block;width:60px;height:8px;border:1px solid var(--line);border-radius:4px;vertical-align:middle;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#8a6a2a,#e2b45a);width:50%;transition:width .4s}
+#lampc{width:30px;height:40px}
+#armor i{font-style:normal;display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border:1px solid var(--line);border-radius:4px;margin-left:3px;color:var(--faint);font-size:13px}
+#armor i.on{color:#1b140b;background:var(--amber);border-color:var(--amber)}
+#armor i.flick{animation:flick .8s 3}
+@keyframes flick{50%{background:#7a6236;color:var(--ink)}}
+#stage{position:relative;flex:1 1 auto;min-height:180px;overflow:hidden}
+.view{position:absolute;inset:0;display:none}
+.view.on{display:block}
+#dlg{position:relative;border-top:1px solid var(--line);background:var(--panel);padding:10px 16px 16px;min-height:150px;max-height:52vh;overflow:auto;cursor:pointer}
+#dname{font-size:13px;letter-spacing:.1em;color:var(--amber);min-height:18px;margin-bottom:4px}
+#dtext{font-size:17px;line-height:1.8;white-space:pre-wrap}
+#dlg.verse #dtext{background:var(--parch);color:var(--parch-ink);padding:10px 14px;border-radius:4px;font-size:16.5px;box-shadow:0 0 30px rgba(242,181,82,.15)}
+#dlg.verse #dname{color:#e9cf98}
+#dlg.whisper #dtext{color:var(--whisper);font-style:italic;letter-spacing:.03em}
+#dlg.letter #dtext{border-left:3px solid var(--faint);padding-left:12px;color:#d7caae}
+#dlg.hint #dtext{color:var(--dim);font-size:15px}
+#dnext{position:absolute;right:14px;bottom:6px;color:var(--faint);font-size:12px;animation:bob 1.4s infinite}
+@keyframes bob{50%{transform:translateY(3px)}}
+#dchoices{display:flex;flex-direction:column;gap:7px;margin-top:10px}
+button.ch{font:inherit;font-size:15.5px;text-align:left;background:#211910;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px 12px;cursor:pointer;line-height:1.5}
+button.ch:hover,button.ch:focus-visible{border-color:var(--amber);outline:none;background:#2a2014}
+button.ch:disabled{opacity:.4;cursor:not-allowed}
+button.ch .k{display:inline-block;width:18px;color:var(--faint);font-size:12px}
+button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px}
+#scroll{display:flex;gap:2px;padding:5px 10px 7px;background:#120e09;border-top:1px solid var(--line);font-size:11px;overflow-x:auto}
+#scroll span{flex:1 0 auto;text-align:center;padding:3px 4px;border-radius:3px;color:var(--faint);background:#1a140d;white-space:nowrap}
+#scroll span.done{color:#2b2116;background:#cdb88e}
+#scroll span.cur{color:#1b140b;background:var(--amber)}
+#toast{position:fixed;left:50%;top:52px;transform:translateX(-50%);display:flex;flex-direction:column;gap:4px;align-items:center;pointer-events:none;z-index:20}
+#toast div{background:rgba(20,15,10,.94);border:1px solid var(--line);padding:4px 12px;border-radius:14px;font-size:13.5px;animation:tin 2.6s forwards;white-space:nowrap}
+#toast .up{color:var(--good)} #toast .down{color:var(--bad)}
+@keyframes tin{0%{opacity:0;transform:translateY(-6px)}10%{opacity:1;transform:none}80%{opacity:1}100%{opacity:0}}
+#v-scene{align-items:center;justify-content:center;text-align:center;background:radial-gradient(ellipse at 50% 62%,rgba(242,181,82,.15),transparent 60%)}
+#v-scene.on{display:flex}
+#v-scene h2{margin:0;font-size:26px;letter-spacing:.2em;font-weight:600;position:relative}
+#v-scene p{color:var(--dim);margin:8px 0 0;letter-spacing:.15em;position:relative}
+#netsvg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+#v-room{background:#070504}
+#room{position:absolute;inset:0}
+#roomglow{position:absolute;left:50%;top:58%;width:var(--g,120px);height:var(--g,120px);transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(242,181,82,.42),rgba(242,181,82,.08) 55%,transparent 70%);transition:width 1.6s,height 1.6s}
+#reader{position:absolute;left:50%;top:58%;transform:translate(-50%,-50%);text-align:center;font-size:12px;color:var(--amber)}
+#reader .lamp,.bigflame{border-radius:50% 50% 45% 45%;background:radial-gradient(circle at 50% 70%,#fff3c4,#f2b552 40%,#d9772b 70%,transparent 72%);animation:fl 2s infinite}
+#reader .lamp{width:14px;height:20px;margin:0 auto 4px}
+@keyframes fl{50%{transform:scale(1.08,.94)}}
+.seat{position:absolute;transform:translate(-50%,-50%);width:96px;text-align:center;font-size:13px;transition:all 1s}
+.seat .c{width:38px;height:38px;margin:0 auto 3px;border-radius:50%;border:1px solid var(--line);background:#120d08;display:flex;align-items:center;justify-content:center;font-size:15px}
+.seat.dark{opacity:.28}.seat.dark .c{border-style:dashed}
+.seat.lit .c{background:#3a2a14;border-color:var(--amber);box-shadow:0 0 18px rgba(242,181,82,.5);color:var(--amber)}
+.seat.dim .c{background:#1f1810;color:var(--dim)}
+.seat.absent .c,.seat.empty .c,.seat.dead .c{background:transparent;border-style:dashed;color:var(--faint)}
+.seat small{display:block;color:var(--dim);font-size:11.5px;line-height:1.35}
+#v-map{background:#030202}
+#mapc{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);touch-action:none;cursor:pointer}
+#dpad{position:absolute;right:8px;bottom:8px;display:grid;grid-template-columns:repeat(3,38px);grid-template-rows:repeat(3,38px);gap:3px;opacity:.8}
+#dpad button{font:inherit;background:#1d160e;color:var(--ink);border:1px solid var(--line);border-radius:6px;font-size:15px;cursor:pointer}
+#dpad .u{grid-column:2;grid-row:1}#dpad .l{grid-column:1;grid-row:2}#dpad .r{grid-column:3;grid-row:2}#dpad .d{grid-column:2;grid-row:3}
+#v-work{flex-direction:column;align-items:center;justify-content:center;gap:16px;cursor:pointer}
+#v-work.on{display:flex}
+#wbar{position:relative;width:min(82%,520px);height:38px;background:#2a1d10;border:1px solid #5b4426;border-radius:4px;background-image:repeating-linear-gradient(90deg,transparent 0 22px,rgba(0,0,0,.18) 22px 24px)}
+#wzone{position:absolute;top:0;bottom:0;background:rgba(242,181,82,.35);border-left:1px solid var(--amber);border-right:1px solid var(--amber)}
+#wneedle{position:absolute;top:-8px;bottom:-8px;width:3px;margin-left:-1px;background:#f6ecd6;box-shadow:0 0 6px #fff}
+#wst{font-size:22px;letter-spacing:.4em;color:var(--amber);min-height:30px}
+#winfo{color:var(--dim);font-size:14px}
+#v-curve svg{width:100%;height:100%}
+.overlay{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#2a1c0c,#0b0806 65%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 16px;z-index:30;overflow:auto}
+.overlay[hidden]{display:none}
+.overlay h1{font-size:clamp(26px,6vw,40px);letter-spacing:.18em;margin:0 0 6px;font-weight:700}
+.overlay h3{letter-spacing:.2em;margin:18px 0 8px;font-weight:600;color:var(--amber)}
+.overlay .sub{color:var(--dim);letter-spacing:.2em;margin-bottom:24px}
+.overlay .note{max-width:540px;color:var(--faint);font-size:13px;line-height:1.75;margin-top:20px}
+.overlay button{font:inherit;font-size:17px;padding:9px 28px;margin:6px;background:transparent;color:var(--amber);border:1px solid var(--amber);border-radius:24px;cursor:pointer}
+.overlay button:hover{background:rgba(242,181,82,.12)}
+.bigflame{width:30px;height:46px;margin:0 auto 18px;filter:drop-shadow(0 0 18px rgba(242,181,82,.7))}
+.cast{max-width:600px;width:100%;text-align:left;font-size:14.5px;line-height:1.7}
+.cast table{width:100%;border-collapse:collapse}
+.cast td{padding:5px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.cast td:first-child{white-space:nowrap;color:var(--ink);font-weight:600;width:6.5em}
+.cast td:last-child{color:var(--dim)}
+.cast .tag{display:inline-block;font-size:11.5px;padding:0 6px;border-radius:8px;margin-left:4px;font-weight:400}
+.tag.real{background:#cdb88e;color:#2b2116}.tag.made{border:1px solid var(--faint);color:var(--dim)}
+#ending .verse{background:var(--parch);color:var(--parch-ink);padding:12px 16px;border-radius:4px;max-width:520px;margin:16px auto;line-height:1.8}
+#ending ul{list-style:none;padding:0;margin:6px 0;line-height:1.9}
+#ending p{max-width:540px;line-height:1.8}
+@media (max-width:520px){#dtext{font-size:16px}#v-scene h2{font-size:21px}.seat{width:74px;font-size:12px}#res{gap:8px}.bar{width:44px}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hud">
+    <div id="when"></div>
+    <div id="res">
+      <span class="res">饼 <b id="bread">0</b></span>
+      <span class="res">油 <span class="bar" id="oilbar"><i></i></span></span>
+      <canvas id="lampc" width="60" height="80" title="灯"></canvas>
+      <span id="armor"><i data-a="faith" title="护心镜（信）">信</i><i data-a="love" title="护心镜（爱）">爱</i><i data-a="hope" title="头盔（望）">望</i></span>
+    </div>
+  </header>
+  <main id="stage">
+    <section id="v-scene" class="view"><svg id="netsvg"></svg><div><h2 id="ptitle"></h2><p id="psub"></p></div></section>
+    <section id="v-room" class="view"><div id="room"><div id="roomglow"></div><div id="reader"><div class="lamp"></div>耶孙</div></div></section>
+    <section id="v-map" class="view"><canvas id="mapc"></canvas>
+      <div id="dpad"><button class="u" data-d="0,-1">↑</button><button class="l" data-d="-1,0">←</button><button class="r" data-d="1,0">→</button><button class="d" data-d="0,1">↓</button></div>
+    </section>
+    <section id="v-work" class="view"><div id="wbar"><div id="wzone"></div><div id="wneedle"></div></div><div id="wst"></div><div id="winfo"></div></section>
+    <section id="v-curve" class="view"><svg id="curve" viewBox="0 0 600 250" preserveAspectRatio="xMidYMid meet"></svg></section>
+  </main>
+  <div id="dlg"><div id="dname"></div><div id="dtext"></div><div id="dchoices"></div><div id="dnext">▼</div></div>
+  <footer id="scroll"></footer>
+</div>
+<div id="toast"></div>
+
+<div id="title" class="overlay">
+  <div class="bigflame"></div>
+  <h1>把这信念给众弟兄听</h1>
+  <div class="sub">帖撒罗尼迦前书 · 一盏灯，一封信，一夜</div>
+  <div><button id="bstart">开始</button><button id="bcont" hidden>继续</button></div>
+  <p class="note">本作直言古代城市中的偶像崇拜、性剥削与死亡，但不作描写。<br>经文引自和合本。<br>操作：点击或按空格键继续；数字键选择；夜里用方向键、WASD 或点击移动。</p>
+</div>
+
+<div id="castpage" class="overlay" hidden>
+  <h1 style="font-size:26px">开始之前</h1>
+  <div class="sub">哪些人物见于圣经，哪些是为游戏设计的</div>
+  <div class="cast">
+    <h3>见于圣经的人物</h3>
+    <table>
+      <tr><td>保罗<span class="tag real">圣经</span></td><td>写这封信的人。在帖撒罗尼迦「昼夜做工」（帖前 2:9），后被弟兄们在夜间送走（徒 17:10）。</td></tr>
+      <tr><td>西拉<span class="tag real">圣经</span></td><td>与保罗同行（徒 17:4、10；帖前 1:1）。</td></tr>
+      <tr><td>提摩太<span class="tag real">圣经</span></td><td>保罗打发他回来「坚固你们」（帖前 3:2）。</td></tr>
+      <tr><td>耶孙<span class="tag real">圣经</span></td><td>收留保罗，家被暴民闯入，为众人交了保状（徒 17:5-9）。</td></tr>
+      <tr><td>亚里达古<span class="tag real">圣经</span></td><td>主角。「帖撒罗尼迦人亚里达古」（徒 20:4），后来与保罗「一同坐监」（西 4:10）。</td></tr>
+      <tr><td>西公都<span class="tag real">圣经</span></td><td>与亚里达古并列的帖撒罗尼迦人（徒 20:4）。</td></tr>
+    </table>
+    <h3>为游戏设计的部分</h3>
+    <table>
+      <tr><td>虚构人物<span class="tag made">设计</span></td><td>叔父狄奥多罗、学徒加力普、婢女阿迦特、尼肯与他的小女儿埃拉、克律西、菲丽娜、菲罗劳斯、邻居老妇。</td></tr>
+      <tr><td>真实人物的<br>虚构细节<span class="tag made">设计</span></td><td>亚里达古是皮革匠、保罗在他作坊做工、他的身世与信主前的往事；耶孙所交保状的条件；西公都的性格；提摩太在城里的经历。经文都没有交代这些。</td></tr>
+    </table>
+    <p class="note" style="text-align:left;margin-top:12px">虚构的部分只用来填补经文没有记载的空白，尽量贴近当时的处境，但不宣称是史实。经文本身一律引自和合本。</p>
+  </div>
+  <div><button id="bcast">明白了，开始</button></div>
+</div>
+
+<div id="ending" class="overlay" hidden></div>
+
+<script>
+'use strict';
+const FAST=/fast/.test(location.search);
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const rnd=a=>a[Math.floor(Math.random()*a.length)];
+
+/* ───────── 人物 ───────── */
+const CH={
+  me:{name:'亚里达古',c:'#f2b552'}, paul:{name:'保罗',c:'#e9cf98'}, silas:{name:'西拉',c:'#d8c49a'},
+  kalip:{name:'加力普',c:'#f0c46a'}, jason:{name:'耶孙',c:'#d9b98a'}, uncle:{name:'狄奥多罗',c:'#c98e6a'},
+  agathe:{name:'阿迦特',c:'#b9d4a0',f:1}, nikon:{name:'尼肯',c:'#c7b4e0'}, chrysis:{name:'克律西',c:'#e0b4b4',f:1},
+  secundus:{name:'西公都',c:'#a8c4d8'}, timothy:{name:'提摩太',c:'#e6d7a8'}, philina:{name:'菲丽娜',c:'#d8a0b8',f:1},
+  philolaus:{name:'菲罗劳斯',c:'#b8a888'}, neighbor:{name:'邻居老妇',c:'#a89a88',f:1},
+  tempter:{name:'暗处的声音',c:'#a993d4'}, crowd:{name:'市场上的人',c:'#a09378'}
+};
+const nm=id=>CH[id]?CH[id].name:id;
+
+/* ───────── 状态 ───────── */
+let S=null;
+function fresh(){return{
+  act:'pro',day:0,slot:0,dayIndex:0,seg:-1,inRoom:false,
+  bread:4,oil:5,fire:0,grey:0,weary:0,
+  armor:{faith:false,love:false,hope:false},
+  words:[],evidence:[],clues:[],revealed:[],grace:{},flags:{},
+  chars:{kalip:{lamp:4,trust:2},nikon:{lamp:3,trust:1},chrysis:{lamp:3,trust:1},secundus:{lamp:3,trust:1,seen:0},
+         agathe:{lamp:3,trust:1},jason:{lamp:4,trust:2},philolaus:{lamp:0,trust:0}}
+};}
+
+/* ───────── HUD ───────── */
+const SLOTS=['清晨','上午','下午','黄昏','夜'];
+const ACTN={pro:'序章 · 作坊',a1:'第一幕 · 信',int:'灯下',a2:'第二幕 · 爱',a3:'第三幕 · 望',fin:'终章 · 今晚'};
+function hud(){
+  if(!S) return;
+  $('#when').textContent=S.inRoom?'耶孙家 · 念信之夜':ACTN[S.act]+(S.day?` · 第${S.day}天 · ${SLOTS[S.slot]||''}`:'');
+  $('#bread').textContent=S.bread;
+  $('#oilbar i').style.width=(S.oil*10)+'%';
+  document.querySelectorAll('#armor i').forEach(i=>i.classList.toggle('on',!!S.armor[i.dataset.a]));
+}
+const SEGS=['1:1','1:2–10','2:1–16','2:17–3:5','3:6–13','4:1–12','4:13–18','5:1–11','5:12–22','5:23–28'];
+function renderScroll(){ $('#scroll').innerHTML=SEGS.map((r,i)=>`<span class="${i<S.seg?'done':i===S.seg?'cur':''}">${r}</span>`).join(''); }
+function read(i){ S.seg=i; renderScroll(); }
+
+let lampMode='day';
+function lampLoop(t){
+  const c=$('#lampc'),x=c.getContext('2d'); x.clearRect(0,0,60,80);
+  x.fillStyle='#6b4a2a'; x.beginPath(); x.ellipse(30,70,20,7,0,0,Math.PI*2); x.fill();
+  x.fillStyle='#4d3520'; x.fillRect(27,60,6,6);
+  const b=S?(lampMode==='night'?S.fire:Math.min(6,S.fire+S.grey)):3;
+  if(b>0){
+    const f=Math.sin(t/180)*.06+Math.sin(t/77)*.04, h=8+b*6, w=4+b*1.5, cy=58-h*.45;
+    const g=x.createRadialGradient(30,cy+h*.2,1,30,cy,h);
+    g.addColorStop(0,'rgba(255,244,200,.98)'); g.addColorStop(.45,'rgba(242,181,82,.85)'); g.addColorStop(1,'rgba(217,119,43,0)');
+    x.fillStyle=g; x.beginPath(); x.ellipse(30,cy,w*(1+f),h*.55*(1-f),0,0,Math.PI*2); x.fill();
+  }
+  requestAnimationFrame(lampLoop);
+}
+
+function toast(t,cls){
+  const box=$('#toast'), d=document.createElement('div'); d.textContent=t; if(cls) d.className=cls;
+  box.appendChild(d); while(box.children.length>3) box.firstChild.remove();
+  setTimeout(()=>d.remove(),2700);
+}
+function fx(o){
+  if(o.bread){ S.bread=Math.max(0,S.bread+o.bread); toast(`饼 ${o.bread>0?'+':''}${o.bread}`,o.bread>0?'up':'down'); }
+  if(o.oil){ S.oil=clamp(S.oil+o.oil,0,10); toast(`油 ${o.oil>0?'+':''}${o.oil}`,o.oil>0?'up':'down'); }
+  if(o.fire){ const b=S.fire; S.fire=clamp(S.fire+o.fire,S.flags.lit?1:0,5);
+    if(S.fire>b) toast('灯火亮了些','up'); else if(S.fire<b) toast('灯火暗了下去','down'); else if(o.fire<0) toast('灯只剩一点余烬','down'); }
+  if(o.weary){ S.weary=clamp(S.weary+o.weary,0,5); toast(o.weary>0?'疲惫加深':'疲惫减轻',o.weary>0?'down':'up'); }
+  hud();
+}
+function charFx(id,dl,dt,quiet){
+  const c=S.chars[id]; if(!c) return;
+  if(dl>0&&S.armor.love) dl+=1;
+  c.lamp=clamp(c.lamp+(dl||0),0,5); c.trust=clamp(c.trust+(dt||0),-3,5);
+  if(!quiet){ if(dl>0) toast(`${nm(id)}的灯亮了些`,'up'); else if(dl<0) toast(`${nm(id)}的灯暗了下去`,'down'); }
+}
+function gain(list,k){ if(!S[list].includes(k)){ S[list].push(k); toast(list==='evidence'?'得着一样证据':'得着一条线索','up'); } }
+
+/* ───────── 对话 ───────── */
+const D={box:$('#dlg'),name:$('#dname'),text:$('#dtext'),ch:$('#dchoices'),next:$('#dnext')};
+let adv=null,typing=null,choosing=false;
+function type(text){
+  if(typing) typing.stop();
+  if(FAST){ D.text.textContent=text; return; }
+  let i=0; D.text.textContent='';
+  const iv=setInterval(()=>{ i+=2; D.text.textContent=text.slice(0,i); if(i>=text.length){ clearInterval(iv); typing=null; } },18);
+  typing={stop(){ clearInterval(iv); D.text.textContent=text; typing=null; }};
+}
+function show(label,color,text,cls){ D.box.className=cls||''; D.name.textContent=label||''; D.name.style.color=color||''; D.ch.innerHTML=''; D.next.hidden=false; type(text); D.box.scrollTop=0; }
+function advance(){ if(choosing) return; if(typing){ typing.stop(); return; } if(adv){ const r=adv; adv=null; r(); } }
+D.box.addEventListener('click',advance);
+const waitAdv=()=>new Promise(r=>adv=r);
+async function say(id,text,cls){ show(id?nm(id):'',id&&CH[id]?CH[id].c:'',text,cls); await waitAdv(); }
+const n=t=>say(null,t);
+const s=(id,t)=>say(id,t);
+async function v(ref,text){ show((S&&S.inRoom?'耶孙念 · ':'')+ref,'',text,'verse'); await waitAdv(); }
+async function letter(label,text){ show(label,'',text,'letter'); await waitAdv(); }
+function hint(t){ show('','',t,'hint'); D.next.hidden=true; }
+function choose(opts,prompt){
+  return new Promise(res=>{
+    if(prompt!==undefined) show('','',prompt,'');
+    if(typing) typing.stop();
+    D.next.hidden=true; choosing=true; D.ch.innerHTML='';
+    opts.filter(o=>o&&!o.hide).forEach((o,i)=>{
+      const b=document.createElement('button'); b.className='ch';
+      b.innerHTML=`<span class="k">${i+1}</span>${o.t}${o.sub?`<small>${o.sub}</small>`:''}`;
+      b.disabled=!!o.dis;
+      b.addEventListener('click',e=>{ e.stopPropagation(); if(b.disabled) return; choosing=false; D.ch.innerHTML=''; res(o.v!==undefined?o.v:i); });
+      D.ch.appendChild(b);
+    });
+  });
+}
+
+/* ───────── 画面 ───────── */
+function view(name){
+  document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-'+name));
+  S.inRoom=name==='room';
+  if(name==='map') drawMap();
+  if(name==='room') renderRoom();
+  hud();
+}
+function place(t,sub){ $('#ptitle').textContent=t; $('#psub').textContent=sub||''; $('#netsvg').innerHTML=''; view('scene'); }
+function drawNet(t){
+  let h=''; for(let i=0;i<t*5;i++){ const x1=(i*37)%100,x2=(i*61+30)%100; h+=`<line x1="${x1}%" y1="0" x2="${x2}%" y2="100%" stroke="rgba(210,190,170,${.12+t*.09})" stroke-width="1"/>`; }
+  $('#netsvg').innerHTML=h;
+}
+
+/* ───────── 房间 ───────── */
+const SEATS=['paul','nikon','secundus','agathe','philolaus','chrysis','kalip'];
+function seatState(id){
+  const c=S.chars[id];
+  if(id==='paul') return 'empty';
+  if(id==='kalip') return c.dead?'dead':(c.lamp>=3?'lit':'dim');
+  if(id==='philolaus'&&!S.flags.philolausCame) return 'none';
+  return c.lamp>=3?'lit':c.lamp>=1?'dim':'absent';
+}
+const SEATTXT={lit:'在',dim:'在，脸是暗的',absent:'空着',empty:'空着（面目离别）',dead:'空着<br>椅背上搭着一条皮围裙'};
+function renderRoom(){
+  const room=$('#room'); room.querySelectorAll('.seat').forEach(e=>e.remove());
+  const list=SEATS.filter(id=>seatState(id)!=='none'), N=list.length;
+  list.forEach((id,i)=>{
+    const a=Math.PI*(1+(i+.5)/N), x=50+Math.cos(a)*40, y=60+Math.sin(a)*44;
+    const st=seatState(id), shown=S.revealed.includes(id);
+    const d=document.createElement('div'); d.className='seat '+(shown?st:'dark');
+    d.style.left=x+'%'; d.style.top=y+'%';
+    const glyph=shown&&(st==='lit'||st==='dim')?nm(id)[0]:'·';
+    d.innerHTML=`<div class="c">${glyph}</div>${shown?nm(id)+'<small>'+SEATTXT[st]+'</small>':'<small>看不清</small>'}`;
+    room.appendChild(d);
+  });
+  const me=document.createElement('div'); me.className='seat lit'; me.style.left='50%'; me.style.top='90%'; me.innerHTML='<small>你</small>'; room.appendChild(me);
+  $('#roomglow').style.setProperty('--g',(110+S.revealed.length*55)+'px');
+}
+function reveal(ids){ ids.forEach(id=>{ if(!S.revealed.includes(id)) S.revealed.push(id); }); renderRoom(); }
+
+/* ───────── 记住的话 ───────── */
+const WORDS={
+  affl:{ref:'帖前 3:4',t:'我们必受患难'},
+  work:{ref:'帖前 4:11',t:'亲手做工'},
+  holy:{ref:'帖前 4:3',t:'远避淫行'},
+  thief:{ref:'帖前 5:2',t:'主的日子来到，好像夜间的贼一样'},
+  joy:{ref:'帖前 1:6',t:'在大难之中，蒙了圣灵所赐的喜乐'},
+  toil:{ref:'帖前 2:9',t:'昼夜做工……免得叫你们一人受累'},
+  love:{ref:'帖前 4:9',t:'你们自己蒙了神的教训，叫你们彼此相爱'},
+  avenge:{ref:'帖前 4:6',t:'这一类的事，主必报应'},
+  these:{ref:'帖前 4:17-18',t:'我们就要和主永远同在。所以，你们当用这些话彼此劝慰'},
+  live:{ref:'帖前 5:10',t:'他替我们死，叫我们无论醒着，睡着，都与他同活'},
+  light:{ref:'帖前 5:5',t:'你们都是光明之子，都是白昼之子'},
+  honor:{ref:'帖前 5:12',t:'敬重那在你们中间劳苦的人'}
+};
+async function learn(k,pre){ if(!S.words.includes(k)) S.words.push(k); toast('你记住了一句话','up'); await letter(pre||'记在心里的话',`「${WORDS[k].t}」（${WORDS[k].ref}）`); }
+
+/* ───────── 缝皮 ───────── */
+let workStitch=null;
+function playWork(){
+  return new Promise(res=>{
+    view('work');
+    const zone=$('#wzone'),needle=$('#wneedle'),W=.2;
+    let hits=0,nst=0,pos=0,dir=1,speed=.75,last=performance.now(),zx=0,raf; const marks=[];
+    const nz=()=>{ zx=.1+Math.random()*(.8-W); zone.style.left=(zx*100)+'%'; zone.style.width=(W*100)+'%'; };
+    const upd=()=>{ $('#wst').textContent=marks.join(' ')||' '; };
+    nz(); upd(); $('#winfo').textContent='针走到亮处时下针（空格 / 点击）'; hint('缝四针。');
+    const loop=t=>{ const dt=Math.min(.05,(t-last)/1000); last=t; pos+=dir*speed*dt; if(pos>1){pos=1;dir=-1;} if(pos<0){pos=0;dir=1;} needle.style.left=(pos*100)+'%'; raf=requestAnimationFrame(loop); };
+    raf=requestAnimationFrame(loop);
+    workStitch=()=>{
+      nst++; const ok=pos>=zx-.01&&pos<=zx+W+.01; if(ok) hits++; marks.push(ok?'✕':'·'); upd();
+      if(nst>=4){ workStitch=null; cancelAnimationFrame(raf); setTimeout(()=>res(hits),FAST?0:600); } else { nz(); speed+=.18; }
+    };
+  });
+}
+$('#v-work').addEventListener('pointerdown',e=>{ e.preventDefault(); if(workStitch) workStitch(); });
+async function doWork(mode){
+  let g;
+  if(mode==='push'){
+    place('你的作坊','赶工');
+    await n('你咬紧牙，一口气赶完。针脚又快又齐，连你自己都吃惊。');
+    await n(rnd(['隔壁的皮匠探头看了看：「你今天手真快。」','来取货的客人摸了摸针脚，多给了一点钱。']));
+    g=4; S.grey=Math.min(3,S.grey+1); S.weary=Math.min(5,S.weary+1);
+  } else {
+    const h=await playWork(); g=h>=4?3:h>=2?2:1;
+    place('你的作坊',''); await n(h>=4?'针脚又密又匀。':h>=2?'缝得还算整齐。':'针脚歪了，只好拆了重缝一段。');
+  }
+  if(mode==='early') g=Math.max(1,g-1);
+  if(S.flags.expelled&&!S.flags.guild) g=Math.max(1,g-1);
+  fx({bread:g});
+}
+
+/* ───────── 曲线 ───────── */
+function drawCurve(pos,dots){
+  const G=t=>205-160*Math.exp(-((t-.5)**2)/(2*.13*.13));
+  let d=''; for(let i=0;i<=100;i++){ const t=i/100; d+=(i?'L':'M')+(40+t*520).toFixed(1)+','+G(t).toFixed(1); }
+  let h=`<path d="${d} L560,205 L40,205 Z" fill="rgba(160,147,120,.13)"/><path d="${d}" fill="none" stroke="#a09378" stroke-width="2"/>
+  <line x1="40" y1="205" x2="560" y2="205" stroke="#3a2e20"/>
+  <text x="300" y="30" fill="#ecdfc6" font-size="17" text-anchor="middle">「平安稳妥」</text>
+  <text x="300" y="232" fill="#6b604f" font-size="12" text-anchor="middle">城里的人心</text>`;
+  (dots||[]).forEach((t,i)=>{ const dx=58+i*30; h+=`<circle cx="${dx}" cy="196" r="6" fill="#f2b552" opacity=".9"/><text x="${dx}" y="183" fill="#f2b552" font-size="10" text-anchor="middle">${t}</text>`; });
+  const px=40+pos*520,py=G(pos);
+  h+=`<circle cx="${px}" cy="${py-6}" r="9" fill="#fff3c4"/><text x="${px}" y="${py-22}" fill="#fff3c4" font-size="13" text-anchor="middle">你</text>`;
+  $('#curve').innerHTML=h; view('curve');
+}
+
+/* ───────── 夜 ───────── */
+const MAP=["#################","#W....#.....#U..#","#.###.#.###.#.#.#","#...#...#M#...#.#","###.#.###.#.###.#","#...#.....#..J#.#","#.#####.#.#.#.#.#","#T....#G#...#...#","#.###.#.#####.#.#","#...........#...E","#C###############"];
+const MW=17,MH=11,LM={};
+MAP.forEach((r,y)=>[...r].forEach((ch,x)=>{ if(/[A-Z]/.test(ch)) LM[ch]=[x,y]; }));
+const LMN={W:'作坊',U:'叔父家',M:'市场',J:'耶孙家',T:'凯撒庙',G:'公会',E:'西门',C:'坟地'};
+const isWalk=(x,y)=>y>=0&&y<MH&&x>=0&&x<MW&&MAP[y][x]!=='#';
+let NW=null;
+const R=()=>S.fire+.6;
+function markSeen(){
+  const [px,py]=NW.pos; NW.seen.add(px+','+py);
+  for(const e of NW.ents){ const d=Math.hypot(e.at[0]-px,e.at[1]-py); if(d<=R()&&S.fire>=(e.need||0)) e.seen=true; }
+}
+function drawMap(){
+  if(!NW) return;
+  const c=$('#mapc'),box=$('#stage');
+  const tile=Math.max(14,Math.floor(Math.min((box.clientWidth-8)/MW,(box.clientHeight-8)/MH)));
+  const dpr=window.devicePixelRatio||1;
+  c.width=tile*MW*dpr; c.height=tile*MH*dpr; c.style.width=tile*MW+'px'; c.style.height=tile*MH+'px';
+  const x=c.getContext('2d'); x.setTransform(dpr,0,0,dpr,0,0); NW.tile=tile;
+  x.fillStyle='#030202'; x.fillRect(0,0,tile*MW,tile*MH);
+  const [px,py]=NW.pos,r=R();
+  if(NW.cfg.dawn){ const g=x.createLinearGradient(tile*MW,0,tile*MW*.5,0); g.addColorStop(0,'rgba(210,180,150,.25)'); g.addColorStop(1,'rgba(210,180,150,0)'); x.fillStyle=g; x.fillRect(0,0,tile*MW,tile*MH); }
+  x.textAlign='center'; x.textBaseline='middle';
+  for(let yy=0;yy<MH;yy++) for(let xx=0;xx<MW;xx++){
+    const ch=MAP[yy][xx], d=Math.hypot(xx-px,yy-py), L=clamp(1-d/(r+.4),0,1), mem=NW.seen.has(xx+','+yy)?.09:0;
+    if(ch==='#'){ if(L>0){ x.fillStyle=`rgba(72,54,35,${L*.95})`; x.fillRect(xx*tile,yy*tile,tile,tile); } }
+    else{
+      const l=Math.max(L,mem); x.fillStyle=`rgba(214,170,104,${l*.5})`; x.fillRect(xx*tile+1,yy*tile+1,tile-2,tile-2);
+      if(LMN[ch]&&(l>.05||ch===NW.cfg.goal)){ x.fillStyle=`rgba(255,236,200,${Math.max(.4,l)})`; x.font=`${Math.floor(tile*.32)}px serif`; x.fillText(LMN[ch],xx*tile+tile/2,yy*tile+tile/2); }
+    }
+  }
+  for(const e of NW.ents){
+    if(e.done) continue;
+    const [ex,ey]=e.at, d=Math.hypot(ex-px,ey-py), L=clamp(1-d/(r+.4),0,1), cx=ex*tile+tile/2, cy=ey*tile+tile/2;
+    if(e.type==='person'&&e.seen){
+      x.globalAlpha=Math.max(.35,L); x.fillStyle=(CH[e.id]&&CH[e.id].c)||'#fff';
+      x.beginPath(); x.arc(cx,cy,tile*.3,0,7); x.fill();
+      x.fillStyle='#1b140b'; x.font=`bold ${Math.floor(tile*.32)}px serif`; x.fillText(nm(e.id)[0],cx,cy+1); x.globalAlpha=1;
+    }
+    if(e.type==='net'&&L>.1){
+      x.strokeStyle=`rgba(200,180,160,${L*.85})`; x.lineWidth=1;
+      for(let i=0;i<6;i++){ x.beginPath(); x.moveTo(ex*tile+((i*7)%10)/10*tile,ey*tile); x.lineTo(ex*tile+((i*3+4)%10)/10*tile,ey*tile+tile); x.stroke(); }
+    }
+    if(e.type==='whisper'&&L>.1){
+      const g=x.createRadialGradient(cx,cy,1,cx,cy,tile*.7); g.addColorStop(0,`rgba(169,147,212,${L*.65})`); g.addColorStop(1,'rgba(169,147,212,0)');
+      x.fillStyle=g; x.fillRect(cx-tile,cy-tile,tile*2,tile*2);
+    }
+  }
+  const cx=px*tile+tile/2,cy=py*tile+tile/2, g=x.createRadialGradient(cx,cy,1,cx,cy,tile*r);
+  g.addColorStop(0,'rgba(255,220,150,.32)'); g.addColorStop(1,'rgba(255,220,150,0)');
+  x.fillStyle=g; x.beginPath(); x.arc(cx,cy,tile*r,0,7); x.fill();
+  x.fillStyle='#fff3c4'; x.beginPath(); x.arc(cx,cy,tile*.16,0,7); x.fill();
+}
+function nightHint(){
+  const goal={E:'带保罗和西拉到西门',J:'把不在房间里的人找回来，再回耶孙家',W:'走回作坊，这一夜就结束'}[NW.cfg.goal];
+  hint(`夜 · 还剩 ${NW.steps} 步 · 灯照 ${Math.floor(R())} 格\n${goal}`);
+}
+async function nightBegin(){
+  lampMode='night'; place('夜','');
+  if(S.grey>0){ await n('天黑了。白天那层亮光一下子褪了下去——那是你自己撑出来的，照不了路。'); S.grey=0; hud(); }
+  const use=Math.ceil(S.fire/2);
+  if(S.oil>=use){ S.oil-=use; hud(); } else { S.oil=0; await n('油干了。'); fx({fire:-1}); }
+  if(S.fire<=1&&S.flags.lit&&!S.grace['ember'+S.act]) await emberNight();
+}
+async function emberNight(){
+  S.grace['ember'+S.act]=true;
+  await n('你的灯只剩一点余烬。你坐在巷口，看不清回家的路。');
+  const cand=['kalip','secundus','agathe','chrysis','nikon','jason'].filter(id=>!S.chars[id].dead&&S.chars[id].lamp>=3&&S.chars[id].trust>=2).sort((a,b)=>S.chars[b].trust-S.chars[a].trust);
+  const h=cand[0]||(S.flags.timothy&&S.act!=='fin'?'timothy':'jason');
+  await n(`巷子那头，有一盏灯过来了。是${nm(h)}。`);
+  await s(h,h==='timothy'?'我没在聚会里看见你，就出来找。来，跟着我的灯走。':'你没来……我想你大概在这里。来，跟着我的灯走。');
+  if(S.chars[h]) charFx(h,0,1,true);
+  await n('那一夜，你不是靠自己的灯走回家的。');
+  fx({fire:1,oil:2});
+}
+function nightWalk(cfg){
+  return new Promise(async res=>{
+    await nightBegin();
+    NW={cfg,pos:[...LM[cfg.start]],steps:cfg.steps,start:cfg.steps,res,busy:false,seen:new Set(),
+        ents:cfg.ents.map(e=>({...e,at:typeof e.at==='string'?LM[e.at]:e.at,done:false,seen:false}))};
+    view('map'); markSeen(); drawMap(); nightHint();
+  });
+}
+async function nwMove(dx,dy){
+  if(!NW||NW.busy) return;
+  const [x,y]=NW.pos,nx=x+dx,ny=y+dy; if(!isWalk(nx,ny)) return;
+  NW.pos=[nx,ny]; NW.steps--; markSeen(); drawMap();
+  const e=NW.ents.find(e=>!e.done&&e.at[0]===nx&&e.at[1]===ny&&(e.type!=='person'||e.seen));
+  if(e){ NW.busy=true; e.done=true; await e.meet(e); if(!NW) return; NW.busy=false; view('map'); }
+  if(MAP[ny][nx]===NW.cfg.goal&&NW.steps<NW.start) return nwEnd('home');
+  if(NW.steps<=0) return nwEnd('dawn');
+  nightHint();
+}
+async function nwEnd(why){
+  const N=NW; NW=null;
+  if(N.ents.some(e=>e.type==='person'&&!e.done&&!e.seen)){ place('夜','');
+    await n('这一夜，暗处还有人。你的灯没有照到。'); }
+  if(why==='dawn'&&!N.cfg.noDawnPenalty){ place('街上','天亮了'); await n('东方发白，你还在街上。'); S.weary=clamp(S.weary+1,0,5); }
+  if(N.cfg.onEnd) await N.cfg.onEnd(why);
+  lampMode='day'; N.res();
+}
+$('#mapc').addEventListener('pointerdown',e=>{
+  if(!NW||NW.busy) return;
+  const r=e.target.getBoundingClientRect(), tx=Math.floor((e.clientX-r.left)/NW.tile), ty=Math.floor((e.clientY-r.top)/NW.tile);
+  const [px,py]=NW.pos, dx=tx-px, dy=ty-py; if(!dx&&!dy) return;
+  if(Math.abs(dx)>=Math.abs(dy)){ if(isWalk(px+Math.sign(dx),py)) nwMove(Math.sign(dx),0); else if(dy) nwMove(0,Math.sign(dy)); }
+  else { if(isWalk(px,py+Math.sign(dy))) nwMove(0,Math.sign(dy)); else if(dx) nwMove(Math.sign(dx),0); }
+});
+document.querySelectorAll('#dpad button').forEach(b=>b.addEventListener('click',e=>{ e.stopPropagation(); const [dx,dy]=b.dataset.d.split(',').map(Number); nwMove(dx,dy); }));
+window.addEventListener('resize',()=>{ if(NW) drawMap(); });
+
+/* ───────── 低语 ───────── */
+const TEMPT={
+  pro:['他们会找到这里来的。'],
+  a1:['保罗不会回来了。他拿了银子，换了一座城。','自从你取下神龛，日子就没好过。','叔父是为你好。','一个外地人的话，你就信了？'],
+  a2:['你撑得住。你一向撑得住。','从前的事，谁会知道？','大家都摇头，你也摇头吧。','那个婢女的事，与你何干？'],
+  a3:['他错过了。','你们的主，来得太晚了。','要是你早一点……','平安稳妥。睡吧，像别人一样。'],
+  fin:['今晚他们不会回来的。']
+};
+async function tempt(line){
+  await say('tempter',line||rnd(TEMPT[S.act]||TEMPT.a1),'whisper');
+  if(S.armor.hope){ await n('那声音碰到你的头盔，滑开了。'); return; }
+  if(S.weary>=2){ await n('你太累了。那声音钻进了心里。'); fx({fire:-1}); }
+  else await n('你握紧了灯，往前走。');
+}
+
+/* ───────── 分辨 ───────── */
+const RESP=[
+  {k:'admonish',t:'警戒',sub:'把该说的话放进他心里'},
+  {k:'console',t:'勉励',sub:'说些宽心的话'},
+  {k:'support',t:'扶助：给一个饼',sub:'饼 -1'},
+  {k:'stay',t:'陪着坐一会儿',sub:'什么也不急着说'},
+  {k:'work',t:'给一份工',sub:'「明天来作坊，和我一起做。」饼 -1（工钱）'},
+  {k:'invite',t:'请来聚会'},
+  {k:'word',t:'说一句话……'}
+];
+function baseEffect(st,k,c){
+  const T={
+    idle:{admonish:c.trust>=2?[1,0,'adm_ok']:[0,-1,'adm_cold'],console:[0,0,'con_idle'],support:[-1,0,'sup_idle'],stay:[0,1,'stay_idle'],work:[2,1,'work_idle'],invite:[1,0,'inv_ok']},
+    faint:{admonish:[-2,-1,'adm_faint'],console:c.stayed||c.trust>=3?[1,1,'con_ok']:[0,0,'con_shut'],support:[1,1,'sup_faint'],stay:[1,1,'stay_faint'],work:[0,0,'work_faint'],invite:c.lamp>=2?[1,0,'inv_ok']:[0,0,'inv_no']},
+    weak:{admonish:[-2,-2,'adm_weak'],console:[0,0,'con_weak'],support:[2,1,'sup_weak'],stay:[1,1,'stay_weak'],work:[-1,0,'work_weak'],invite:[0,0,'inv_weak']},
+    steady:{admonish:[-1,-1,'adm_steady'],console:[1,0,'con_steady'],support:[0,0,'sup_steady'],stay:[1,1,'stay_steady'],work:[0,0,'work_steady'],invite:[0,0,'inv_steady']}
+  };
+  return T[st][k];
+}
+const RT={
+  adm_ok:['你把{n}拉到一边，私下说：「弟兄，保罗在的时候昼夜做工，不肯白吃谁的饭。我们也该这样。」','{n}低头想了很久：「……你说得对。」'],
+  adm_cold:['你说：「你不能再这样下去了。」','{n}脸一沉：「你算什么，来管我？」'],
+  adm_faint:['你说：「你该振作起来了。」','{n}的头垂得更低了。'],
+  adm_weak:['你说：「大家都在做工，你怎么能躺着？」','{n}撑起身子。你这才看清，{ta}的脸烧得通红。'],
+  adm_steady:['你说了几句重话。','{n}愣住了：「我做错了什么？」'],
+  con_idle:['你说：「主一定记念你的热心。」','{n}笑了：「是啊！所以更不用做工了。」'],
+  con_ok:['你轻轻地说了几句安慰的话。','{n}握住你的手，很久没有放开。'],
+  con_shut:['你说了几句宽心的话。','{n}点点头，眼睛却看着别处。话没有进去。'],
+  con_weak:['你说：「会好起来的。」','{n}勉强笑了笑。米缸还是空的。'],
+  con_steady:['你说：「谢谢你一直都在。」','{n}有点不好意思：「这有什么。」'],
+  sup_idle:['你给了{n}一个饼。','{n}接过去，转身又回到人群里了。'],
+  sup_faint:['你把一个饼放在{n}手里。','{n}看着那个饼，眼眶红了。'],
+  sup_weak:['你把饼放在{n}手里，又帮着烧了一壶水。','{n}的手终于暖了一点。'],
+  sup_steady:['你给了{n}一个饼。','{n}推了回来：「我够吃，你留着吧。」'],
+  stay_idle:['你在{n}旁边坐下。','{n}说了很多主的日子的事。你听着。'],
+  stay_faint:['你在{n}旁边坐下，什么也没说。','过了很久，{n}开口了。'],
+  stay_weak:['你守在{n}身边。','{n}睡着了。呼吸平稳了一些。'],
+  stay_steady:['你坐下来，问{n}最近好不好。','{n}愣了一下：「……好久没人问我了。」'],
+  work_idle:['你说：「明天来作坊，和我一起做。工钱我照付。」','{n}犹豫了一下：「……好。」'],
+  work_faint:['你说：「来作坊做点事吧，忙起来就好了。」','{n}摇摇头。'],
+  work_weak:['你说：「明天来作坊做工吧。」','{n}想站起来，又跌坐回去。'],
+  work_steady:['你说：「有空来作坊坐坐。」','{n}点点头。'],
+  inv_ok:['你说：「黄昏来耶孙家吧，大家都在。」','{n}说：「……我会去。」'],
+  inv_no:['你说：「来聚会吧。」','{n}摇摇头：「我没有力气见人。」'],
+  inv_weak:['你说：「来聚会吧。」','{n}连门都走不出去。'],
+  inv_steady:['你说：「黄昏见。」','{n}笑了：「我哪次没去？」']
+};
+const fill=(t,id)=>t.replace(/\{n\}/g,nm(id)).replace(/\{ta\}/g,CH[id]&&CH[id].f?'她':'他');
+function wordFx(id,st,w,c){
+  const hurtAg=id==='agathe'&&!S.flags.protected&&(S.act==='a2'||S.act==='a3'||S.act==='fin');
+  if(st==='faint'&&!c.stayed&&c.trust<3) return [0,0,'话说得太早了。{n}没有听进去。'];
+  if(w==='holy'&&hurtAg) return [-2,-1,'你对一个被人欺负的人说「远避淫行」。{n}的脸一下子白了。'];
+  if(w==='avenge'&&id==='agathe') return [2,1,'{n}抬起头：「……主也看见了？」'];
+  if((w==='work'||w==='toil')&&st==='idle') return [1,0,'{n}沉默了。手指在膝盖上动了动，像在缝什么。'];
+  if(w==='thief'&&st==='idle'&&id==='kalip') return [1,0,'「主的日子像夜间的贼——那更要醒着做工。」{n}挠了挠头。'];
+  if(w==='these'&&c.grief) return [3,1,'{n}抬起头，像第一次听见这样的话。'];
+  if(w==='live'&&c.grief) return [3,1,'{n}捂住了脸，肩膀一直在抖。'];
+  if((w==='affl'||w==='joy')&&st==='faint'&&!c.grief) return [1,0,'{n}深吸了一口气：「……是啊。他早就说过了。」'];
+  if((w==='affl'||w==='joy')&&c.grief) return [0,0,'{n}苦笑：「是啊，患难。」'];
+  if(w==='light'&&(st==='faint'||id==='agathe')) return [1,1,'{n}看了看你手里的灯。'];
+  if(w==='love'&&(st==='steady'||st==='weak')) return [1,1,'{n}笑了。'];
+  if(w==='honor'&&(id==='secundus'||id==='jason')) return [2,1,'{n}愣了很久：「……我只是做了该做的。」'];
+  return [0,0,'{n}点点头。'];
+}
+
+function prof(id){
+  const a=S.act,f=S.flags,c=S.chars[id];
+  if(!c||c.dead) return null;
+  const P=(state,where,intro,clues,extra)=>Object.assign({state,where,intro,clues:clues||[]},extra||{});
+  if(id==='kalip'){
+    if(a==='a1') return P('steady','你的作坊',[['kalip','师傅，等主来了，我第一个跑去迎接，谁也别跟我抢！'],['kalip','（压低声音）……可是，保罗还会回来吗？']],[['他今天笑得比平常少',2]]);
+    if(a==='a2'){
+      if(!f.kalipBack) return P('idle','市场 · 尼肯的人群里',[['kalip','师傅！尼肯说主的日子近了，还缝什么帐棚？'],['kalip','（他避开你的眼睛）……我们在耶孙家吃饭，不花钱。']],
+        [['他三天没来作坊了',0],['他跟着尼肯在市场上喊',0],['他手上的茧已经软了',2]],
+        {on:{work:async()=>{ f.kalipBack=true; await n('第二天一早，加力普来了。他一句话没说，坐下就开始缝。'); },
+             admonish:async()=>{ if(c.trust>=2){ f.kalipBack=true; await n('第二天，加力普回到了作坊。'); } }}});
+      return P('steady','你的作坊',[['kalip','师傅，这条腰带是我缝的。（他咧嘴一笑）等主来那天，你系着它，跟在我后面跑。']]);
+    }
+    if(a==='a3') return P('steady','你的作坊',[['kalip','师傅，你说主来的那天，是什么样子？']]);
+    return null;
+  }
+  if(id==='nikon'){
+    if(a==='a1'&&!f.ellaDead) return P('steady','尼肯的布铺',[['nikon','我家埃拉天天问我：「主什么时候来？」（他笑得合不拢嘴）我说：快了，快了。']]);
+    if(a==='a1') return P('faint','城外坟地',[['nikon','（他没有抬头）她才五岁。'],['nikon','主来的那天，她会不会错过？']],[['他的铺子关着',0],['他好几天没吃东西了',1],['他手里攥着一只很小的童鞋',2]],{grief:true});
+    if(a==='a2') return P('faint','市场',[['nikon','主的日子近了！弟兄们，还做什么工？'],['nikon','（对你）你也来吧，别再缝那些帐棚了。']],
+      [['他天天在市场宣告主的日子',0],['他带着一群年轻人在耶孙家吃饭，铺子很多天没开了',0],['他腰间挂着一只很小的童鞋',3]],
+      {grief:true,on:{stay:async()=>{ await s('nikon','……我只是想快一点再见到她。主来的那天，我想第一个看见埃拉。'); f.nikonSeen=true; },
+                      admonish:async()=>{ f.nikonHurt=true; await s('nikon','你也嫌我吃白饭？好，我不去耶孙家就是了。'); }}});
+    if(a==='a3') return P('faint','市场',[['nikon','又一个！主为什么还不来？'],['nikon','（他的声音哑了）加力普……还有我的埃拉。']],[['他喊得比从前更响了',0],['他的眼睛是肿的',2]],{grief:true});
+    if(a==='fin') return P('faint','夜里的市场',[['nikon','你来做什么？我只是……想等在这里。主来的时候，我想第一个看见。']],[],{grief:true});
+    return null;
+  }
+  if(id==='chrysis'){
+    if(a==='a1') return P('steady','克律西家',[['chrysis','保罗？他是个好人。加力普小时候发烧，他守了三夜，像个当娘的。']],[],{see:async()=>gain('evidence','nurse')});
+    if(a==='a2'&&!f.kalipBack) return P('weak','克律西家',[['chrysis','没什么，我还撑得住。']],[['她的米缸空了',0],['加力普好几天没拿钱回家',0],['她把自己那份饼省给了邻居的孩子',2]]);
+    if(a==='a2') return P('steady','克律西家',[['chrysis','加力普又回作坊了。谢谢你。']]);
+    if(a==='a3'&&!f.kalipDead) return P('steady','克律西家',[['chrysis','这孩子，昨晚又说了一遍他那句话。']]);
+    if(a==='a3') return P('faint','城外坟地',[['chrysis','彼此安慰……拿什么安慰？']],[['她整夜坐在坟前',0],['她手里攥着那条没缝完的腰带',1]],{grief:true});
+    if(a==='fin') return P('faint','坟地',[['chrysis','他说过要第一个跑出去迎接的……可是他躺在这里。']],[],{grief:true});
+    return null;
+  }
+  if(id==='secundus'){
+    if(a==='a2'&&!f.secHelped) return P('weak','西公都家',[['secundus','（隔着门）没事……过两天就好。']],
+      [['他两天没送生皮来',0],['邻居说他整天关着门',0],['他额头滚烫，嘴唇干裂——他在发烧',3]],
+      {on:{support:async()=>{ f.secHelped=true; await n('你把饼和药草留下。两天后，他又来送生皮了。'); },
+           admonish:async()=>{ f.secWronged=true; }}});
+    if(a==='fin') return P('steady','耶孙家的角落',[['secundus','我没事。你去找他们吧。……真的。']]);
+    return P('steady','西公都的鞣皮作坊',[['secundus','我？我挺好的。'],['secundus','聚会用的灯，我都擦过了。没人注意也没关系。']],[['他把每一盏灯都擦得发亮',1]]);
+  }
+  if(id==='agathe'){
+    const after=a==='a3'||a==='fin'||(a==='a2'&&f.banquetDone);
+    if(a==='a1') return P('steady','叔父家后门',[['agathe','少主人。（她回头看了看）主人这几天心情很坏。']],[],
+      {after:async(k)=>{ if(k!=='admonish'&&c.trust>=1&&!S.clues.includes('agathe')){ await s('agathe','那天早上，主人穿上最好的衣服，去了地方官那里。回来以后他说：「这下皮革街保住了。」'); gain('clues','agathe'); } }});
+    if(!after) return P('steady','叔父家后门',[['agathe','少主人，主人要在后天宴客。他说要你送挽具来。']]);
+    if(f.protected&&!f.agatheDespised) return P('steady','叔父家后门',[['agathe','那晚……谢谢你。从来没有人站在我前面过。']]);
+    if(a==='fin') return P('faint','叔父家后门',[['agathe','主人锁了门，不许我出去。……我也不知道，那里还有没有我的位子。']]);
+    if(f.agatheDespised&&f.protected) return P('faint','叔父家后门',[['agathe','我只是个婢女。说的话，没有人要听。']]);
+    return P('faint','叔父家后门',[['agathe','（她不说话，把袖子往下拉了拉）']],[['她手臂上有青紫',0],['她不敢看你',0],['那晚你转身走的时候，她看见了',1]]);
+  }
+  if(id==='jason'){
+    if(a==='a1') return P('steady','耶孙家',[['jason','亚里达古，坐。……保罗的事，别问了。']],[['他在蜡板上反复写着一个数目，看见你就抹掉了',3]],
+      {see:async()=>{ if(S.fire>=3) gain('clues','jason'); }});
+    if(a==='a2'&&S.day>=3) return P('weak','耶孙家',[['jason','我没事。门总得开着。']],[['他瘦了很多',0],['他家的米缸见底了',0],['他已经很多天没睡好',2]]);
+    if(a==='a2'||a==='a3') return P('steady','耶孙家',[['jason','坐吧。今天还有饼。']]);
+    return null;
+  }
+  return null;
+}
+
+async function doVisit(id,o){
+  o=o||{};
+  const p=prof(id); if(!p){ await n('你没有找到人。'); return; }
+  const c=S.chars[id]; if(id==='secundus') c.seen=S.dayIndex;
+  if(!o.night) place(p.where,nm(id));
+  for(const [sp,t] of p.intro) await s(sp,t);
+  if(p.clues.length) await n('你注意到：\n'+p.clues.map(([t,need])=>S.fire>=need?'· '+t:'· （太暗了，你看不清。）').join('\n'));
+  if(p.see) await p.see();
+  const max=o.max||2; let stayed=false;
+  for(let r=0;r<max;r++){
+    const opts=RESP.map(x=>({t:x.t,sub:x.sub,v:x.k,
+      dis:(x.k==='support'||x.k==='work')&&S.bread<1,
+      hide:(x.k==='word'&&!S.words.length)||(x.k==='work'&&S.act==='fin')}));
+    opts.push({t:'告辞',v:'leave'});
+    const k=await choose(opts,`${nm(id)}——你要怎样回应？（${r+1}/${max}）`);
+    if(k==='leave') break;
+    let res;
+    if(k==='word'){
+      const w=await choose([...S.words.map(w=>({t:'「'+WORDS[w].t+'」',sub:WORDS[w].ref,v:w})),{t:'（算了）',v:''}],'说哪一句？');
+      if(!w){ r--; continue; }
+      res=wordFx(id,p.state,w,{stayed,trust:c.trust,grief:p.grief});
+      await s('me','「'+WORDS[w].t+'」'); await n(fill(res[2],id));
+    } else {
+      res=baseEffect(p.state,k,{trust:c.trust,stayed,lamp:c.lamp});
+      const tx=RT[res[2]]; await n(fill(tx[0],id)); await n(fill(tx[1],id));
+      if(k==='support'||k==='work'){ fx({bread:-1}); S.flags.gaveToday=true; }
+    }
+    charFx(id,res[0],res[1]);
+    if(k==='stay') stayed=true;
+    if(p.on&&p.on[k]) await p.on[k]();
+    if(p.after) await p.after(k);
+  }
+}
+
+/* ───────── 一天 ───────── */
+const PRAY=['天还没亮。你跪在从前放神龛的地方，什么也没求，只是安静下来。','你为耶孙祷告，为弟兄们祷告，也为叔父祷告。','窗外还是黑的。你说：主啊，我在这里。'];
+const GL={
+  a1:['耶孙家挤满了人。有人起头唱诗，声音发抖，却没有停。','西公都把灯一盏一盏点亮。没有人注意到，是谁每天把它们擦干净的。','加力普又说了一遍：「等主来了，我第一个跑去迎接！」大家都笑了。'],
+  a2:['提摩太讲保罗在腓立比挨打、坐监的事。讲完了，他说：「他让我告诉你们，他天天为你们祷告。」','尼肯带来的年轻人占了半间屋子。耶孙默默地数着饼。','提摩太说：「神召我们，不是要我们沾染污秽，乃是要我们成为圣洁。」'],
+  a3:['屋里比从前安静。加力普常坐的那个角落空着。','有人起了个头唱诗，唱到一半，唱不下去了。']
+};
+async function gather(){
+  S.flags.gathered=true; place('耶孙家','黄昏 · 聚会');
+  await n(S.act==='a3'&&!S.flags.kalipDead?rnd(GL.a1):rnd(GL[S.act]||GL.a1)); fx({oil:3});
+  const secOk=prof('secundus')&&prof('secundus').state!=='weak';
+  const k=await choose([{t:'和大家一起祷告',v:'p',sub:'灯火 +1'},{t:'坐到西公都旁边，问问他好不好',v:'s',hide:!secOk}],'聚会里，你……');
+  if(k==='p'){ await n('你们一起祷告。屋里的灯好像都亮了一些。'); fx({fire:1}); }
+  else { S.chars.secundus.seen=S.dayIndex; await s('secundus',rnd(['我？挺好的。……谢谢你问。','就是有点累。好久没人问我了。','你坐过来，我很高兴。'])); charFx('secundus',1,1); }
+}
+async function market(){
+  place('市场','人声嘈杂');
+  const q=MKT[S.act]||[], i=S.flags['mkt'+S.act]||0;
+  if(i<q.length){ S.flags['mkt'+S.act]=i+1; await q[i](); }
+  else await n(rnd(['市场上有人在说：凯撒的节期快到了，要分祭肉。','卖鱼的说：那些不拜神的人，迟早要给城里招祸。','有人在议论：西门外又来了一队罗马兵。']));
+}
+function canConfess(){ return S.flags.timothy&&!S.flags.confessed&&(S.act==='a2'||S.act==='a3')&&(S.flags.philinaAsked||S.flags.edge); }
+async function confess(){
+  place('城墙下','提摩太');
+  await n('你在城墙下找到提摩太。你把从前的事、这些日子的事，一样一样说了出来。');
+  await s('timothy','你说出来了。说出来，它就在光里了。');
+  await s('timothy','你不是靠自己挣脱的。是神召你成为圣洁，也是祂把圣灵赐给你。');
+  await s('timothy','往后，若是网又缠上来，就来找我。或者找西公都——他嘴很紧。');
+  S.flags.confessed=true; fx({fire:2}); if(S.weary>0) fx({weary:-1});
+}
+async function slotAction(){
+  const sl=S.slot;
+  if(sl===0){
+    const k=await choose([{t:'独自祷告',v:'pray',sub:'天亮前安静下来'},{t:'提早开工',v:'early',sub:'多缝几针'},{t:'为缺乏谢恩',v:'thanks',hide:S.oil>1,sub:'油罐快见底了'}],'清晨。');
+    if(k==='pray'){ place('你的家','清晨 · 祷告'); await n(rnd(PRAY)); fx({fire:1}); if(S.weary>0) S.weary--; }
+    else if(k==='thanks'){ place('你的家','清晨 · 谢恩'); await n('油罐快见底了。你还是跪下来谢恩。'); await n('奇怪的是，灯火比油所能供应的还要亮。'); fx({fire:2,oil:1}); }
+    else await doWork('early');
+    return;
+  }
+  if(sl===1||sl===2){
+    const k=await choose([
+      {t:'做工',v:'work',sub:'缝皮挣饼'},
+      {t:'咬牙撑，赶工',v:'push',sub:'又快又多'},
+      {t:'探访一个人',v:'visit'},
+      {t:'去市场',v:'market',sub:'听风声'},
+      {t:'去找提摩太',v:'tim',hide:!canConfess(),sub:'把压在心里的事说出来'}],SLOTS[sl]+'。');
+    if(k==='work'||k==='push') await doWork(k==='push'?'push':'hand');
+    else if(k==='visit'){
+      const ids=['kalip','nikon','chrysis','secundus','agathe','jason'].filter(id=>prof(id));
+      const who=await choose([...ids.map(id=>({t:nm(id),sub:prof(id).where,v:id})),{t:'（算了，回去做工）',v:''}],'去看谁？');
+      if(who) await doVisit(who); else await doWork('hand');
+    }
+    else if(k==='market') await market();
+    else if(k==='tim') await confess();
+    return;
+  }
+  if(sl===3){
+    const k=await choose([{t:'去耶孙家聚会',v:'g',sub:'和弟兄们在一起'},{t:'留在作坊多做一点',v:'w',sub:'饼 +1'}],'黄昏。');
+    if(k==='g') await gather(); else { place('你的作坊','黄昏'); await n('你点上灯，又缝了一阵。窗外，有人往耶孙家去。'); fx({bread:1}); }
+    return;
+  }
+  await nightWalk(nightCfg());
+}
+async function endDay(){
+  S.bread-=2; toast('一天的饼 -2','down');
+  if(S.bread<0){ S.bread=0; place('你的家','夜深'); await n('家里没有饼了。你空着肚子躺下。'); S.weary=clamp(S.weary+1,0,5); }
+  if(S.flags.gaveToday&&S.bread<=1&&!S.grace['bread'+S.act]){ S.grace['bread'+S.act]=true; S.flags.doorBread=true; }
+  if((S.act==='a2'||S.act==='a3')&&S.dayIndex-S.chars.secundus.seen>=3){ S.chars.secundus.lamp=Math.max(0,S.chars.secundus.lamp-1); S.chars.secundus.seen=S.dayIndex; }
+  hud();
+}
+async function runDays(N){
+  for(let d=1;d<=N;d++){
+    S.day=d; S.dayIndex++; S.flags.gathered=false; S.flags.gaveToday=false;
+    if(S.flags.doorBread){ S.flags.doorBread=false; S.slot=0; place('你家门口','清晨'); await n('清早开门，门口放着一篮饼。没有人知道是谁放的。'); fx({bread:3}); }
+    for(S.slot=0;S.slot<5;){
+      lampMode=S.slot===4?'night':'day'; hud();
+      const ev=EV[S.act]&&EV[S.act][d]&&EV[S.act][d][S.slot];
+      if(ev){ const used=await ev(); if(used){ S.slot+=used; continue; } }
+      await slotAction(); S.slot++;
+    }
+    await endDay();
+  }
+  S.day=0;
+}
+function nightCfg(){
+  const a=S.act,d=S.day,f=S.flags,E=[];
+  const P=(id,at,need)=>{ if(prof(id)) E.push({type:'person',id,at,need:need||0,meet:()=>doVisit(id,{night:true})}); };
+  const Wh=(at,line)=>E.push({type:'whisper',at,meet:()=>tempt(line)});
+  const Net=(at,meet)=>E.push({type:'net',at,meet});
+  if(a==='a1'){
+    if(d===1){ P('chrysis',[4,9],1); P('agathe','U',2); Wh([9,5]); }
+    if(d===2){ P('nikon','C',2); Wh([5,3]); Wh([11,9]); }
+    if(d===3){ P('secundus',[9,7],1); Wh([3,5]); Wh([15,3]); }
+  }
+  if(a==='a2'){
+    if(d===1){ P('kalip','M',1); P('nikon','C',3); Wh([3,5]); }
+    if(d===2){ if(f.philinaOpen) Net([5,3],philinaDoor); P('secundus',[9,7],2); Wh([11,9]); }
+    if(d===3){ P('agathe','U',2); Wh([9,5]); Wh([4,9]); }
+    if(d===4){ P('chrysis',[4,9],1); P('jason',[12,5],0); }
+  }
+  if(a==='a3'){
+    if(d===1){ Wh([11,9]); }
+    if(d===2){ P('chrysis','C',1); P('nikon','M',3); Wh([9,5]); Wh([5,3]); }
+    if(d===3){ Net([9,5],drunkCrowd); Net([5,7],drunkCrowd); P('nikon','M',3); Wh([3,5],'平安稳妥。睡吧，像别人一样。'); Wh([15,3]); }
+    if(d===4){ P('agathe','U',1); P('secundus',[9,7],1); }
+  }
+  return {start:f.gathered?'J':'W',goal:'W',steps:28,ents:E};
+}
+async function philinaDoor(){
+  place('菲丽娜家门口','夜');
+  await n('你发现自己站在菲丽娜家门口。门缝里透出灯光。');
+  const k=await choose([{t:'转身离开',v:'go'},{t:'抬手敲门',v:'knock'}]);
+  if(k==='go'){ await n('你在门口站了很久，最后转身走了。'); fx({fire:-1}); S.weary=clamp(S.weary+1,0,5); }
+  else{
+    await n('你抬起手——手停在半空。');
+    await n('手里的灯猛地一晃。你想起保罗在作坊里说过的话：「远避淫行。」');
+    await n('你退了回来，一直退到街上，才发现自己在发抖。');
+    fx({fire:-2}); S.weary=clamp(S.weary+2,0,5); S.flags.edge=true;
+  }
+}
+async function drunkCrowd(){
+  place('街上','凯撒节期之夜');
+  await n('一群醉汉堵在街口，拉着路过的人往酒馆里拽。巷子深处，一个少年奴隶在哭。');
+  const k=await choose([{t:'绕开他们，提着灯快走',v:'go'},{t:'上前把那个少年拉出来',v:'help',sub:'会挨打'},{t:'进去喝一杯，就一杯',v:'drink'}]);
+  if(k==='go') await n('你绕开了。哭声一直跟在你后面。');
+  else if(k==='help'){ await n('你挤过去，把少年拉到灯下。有人一拳打在你脸上。'); await n('少年挣脱跑了。你不知道他会跑到哪里。可是今夜，他不在那间屋子里了。'); fx({fire:1}); S.weary=clamp(S.weary+1,0,5); }
+  else { await n('一杯变成了三杯。等你回过神来，灯已经快灭了。'); fx({fire:-2}); }
+}
+
+/* ───────── 市场 ───────── */
+const MKT={
+  a1:[async()=>{
+      await n('卖油的摊子边，有人正说得起劲：');
+      await s('crowd','那个犹太人？拿了腓立比人的银子，半夜就跑了。骗子都是这样的！');
+      await n('加力普站在你身后，脸色发白。');
+      const ev=S.evidence.length;
+      const k=await choose([{t:'当众说出你知道的',v:'speak',sub:`你手上有 ${ev} 样证据`},{t:'不理他们，走开',v:'go'}]);
+      if(k==='go'){ await n('你拉着加力普走开。他一路上没有说话。'); charFx('kalip',-1,0); return; }
+      if(ev>=2){
+        if(S.evidence.includes('ledger')) await s('me','他在我作坊做了几个月工，工钱一文没取——账板上记着。');
+        if(S.evidence.includes('awl')) await s('me','这是他留下的锥子，磨秃了。骗子会这样做工吗？');
+        if(S.evidence.includes('nurse')) await s('me','克律西的儿子发烧，他守了三夜，像个当娘的。');
+        await n('人群安静了一会儿，散了。'); await s('kalip','（小声）师傅……我就知道他不是骗子。'); charFx('kalip',1,1); fx({fire:1});
+      } else { await s('me','他不是那样的人！'); await n('有人笑了：「你怎么知道？」你答不上来。'); S.weary=clamp(S.weary+1,0,5); charFx('kalip',-1,0); }
+    },
+    async()=>{
+      await n('酒摊边，地方官的一个书记喝得半醉。');
+      if(S.fire>=2){
+        await s('crowd','耶孙那张保状？哼，条件可不轻——只要现在这几位地方官还在任，那犹太人就别想再进城。');
+        await s('crowd','这主意可不是地方官想出来的。是城里几个会首出的。');
+        gain('clues','clerk');
+      } else await n('他在嘟囔着什么，你没听清。');
+    }],
+  a2:[async()=>{
+      await s('nikon','主的日子近了！变卖你们的东西！还做什么工？');
+      await n('几个年轻人跟着喊。'+(S.flags.kalipBack?'':'加力普也在里面。'));
+      await n('卖布的摇头：「这些人，自己不做工，还要人养。」外人看你们的眼光，越来越冷了。');
+      const k=await choose([{t:'上前，私下和尼肯说几句',v:'v'},{t:'走开',v:'g'}]);
+      if(k==='v') await doVisit('nikon',{night:true});
+    }],
+  a3:[async()=>{
+      await n('石柱上刷着新写的大字：「平安稳妥」。');
+      await s('crowd','有凯撒在，天下太平。那些说什么「另有一个王」的，迟早要吃苦头。');
+    }]
+};
+
+/* ───────── 事件 ───────── */
+const EV={a1:{},a2:{},a3:{}};
+EV.a1[1]={
+  1:async()=>{
+    place('你的作坊','叔父来了');
+    await n('叔父狄奥多罗来了。他是皮革匠公会的会首，也是把你养大、教你手艺的人。');
+    await s('uncle','我听说，你把神龛取下来了。');
+    await s('uncle','后天晚上是公会的月宴。为会里的守护神献一杯，也为凯撒的平安奠一杯。你从小就是这么做的。');
+    await s('uncle','来，你还是会里的人。不来——（他看了看加力普）会里的丧葬钱，你们俩就别指望了。');
+    await s('uncle','孩子，我是为你好。这城里的人，死了没有公会埋，就只能丢在城外。');
+    const k=await choose([{t:'「我会想想。」',v:0},{t:'「叔父，那杯酒，我不能再奠了。」',v:1}]);
+    if(k){ await n('叔父看了你很久：「你父亲要是还活着……」他没有说完，走了。'); }
+    else await n('叔父点点头：「后天，我等你。」');
+    return 1;
+  },
+  3:async()=>{
+    await gather();
+    await s('kalip','耶孙，保罗什么时候回来？');
+    await s('jason','（他顿了一下）……别问了。');
+    if(S.fire>=3){ await n('你看见耶孙的手在发抖。他在躲什么。'); gain('clues','jason'); }
+    return 1;
+  }
+};
+EV.a1[2]={0:async()=>{
+  S.flags.ellaDead=true;
+  place('城外 · 坟地','清晨');
+  await n('天刚亮，西公都来敲门：尼肯的小女儿埃拉，夜里睡了，没有再醒过来。');
+  await n('她是城里第一个在主里睡了的人。');
+  await n('你们在城外的坟地埋葬她。尼肯跪在坟前，不肯起来。');
+  await s('nikon','保罗说过，主要从天降临。可是她……她已经在地里了。主来的那天，她会不会错过？');
+  await n('没有人回答得出来。保罗没有教过这件事。');
+  const k=await choose([{t:'陪他在坟前坐着，什么也不说',v:'stay'},{t:'「主自然有安排，别想太多。」',v:'brush'},{t:'「我们必受患难。保罗说过的。」',v:'affl'}]);
+  if(k==='stay'){ await n('你们坐了很久。太阳升起来，他才开口：「谢谢你没说话。」'); charFx('nikon',1,1); }
+  else if(k==='brush'){ await n('他点点头，眼睛却看着别处。话没有进去。'); charFx('nikon',-1,0); }
+  else { await n('他苦笑：「是啊，患难。可是她才五岁。」'); }
+  await tempt('她错过了。你们的主，来得太晚了。');
+  return 2;
+}};
+EV.a1[3]={3:async()=>{
+  place('黄昏','公会月宴的日子');
+  const k=await choose([{t:'去公会会所',v:'go',sub:'叔父在等'},{t:'照常去耶孙家聚会',v:'skip'}],'今晚是公会的月宴。');
+  if(k==='skip'){
+    S.flags.expelled=true; await gather();
+    await n('聚会散了。回家的路上，你听说公会已经把你的名字从会册上划掉了。加力普是你的学徒，也一样。');
+    return 1;
+  }
+  place('皮革匠公会 · 会所','月宴');
+  await n('会所里点着许多灯。正中是行业守护神的像，旁边是一尊凯撒像，前面摆着酒和祭肉。');
+  await n('人人都看着你。叔父端起一杯酒，递到你面前。');
+  const c=await choose([{t:'接过酒杯，照样奠酒',v:'pour',sub:'保住会籍、生意和丧葬钱'},{t:'把酒杯放回桌上',v:'refuse',sub:'当众站到尾端'}]);
+  if(c==='pour'){
+    await n('酒洒在地上。你听见有人松了一口气。叔父拍了拍你的肩。');
+    await n('回家的路上，你手里的灯很暗。');
+    fx({fire:-2}); S.flags.guild=true; return 1;
+  }
+  await n('你把酒杯放回桌上。');
+  await s('uncle','（低声）你让我在全会面前丢脸。');
+  await n('有人朝你脚边吐了一口唾沫。有人喊：「滚出去！」');
+  await n('公会把你的名字从会册上划掉了。加力普是你的学徒，也一样。');
+  S.flags.expelled=true;
+  const j=await choose([{t:'（心里）为主的名受辱，原是喜乐的事',v:'joy'},{t:'（心里）这些人，总有一天要付代价',v:'grudge'}],'走出会所时，你心里……');
+  if(j==='joy'){ await n('奇怪，你的脚步是轻的。'); fx({fire:1}); }
+  else { await n('那口唾沫，你记了很久。'); fx({fire:-1}); }
+  return 1;
+}};
+EV.a1[4]={
+  1:async()=>{
+    const k=['agathe','clerk','jason'].filter(c=>S.clues.includes(c)).length;
+    if(k<2){ place('你的作坊','上午'); await n('有个疑问一直压在你心里：保罗为什么不能回来？可是你还拼不出全貌。'); return 0; }
+    place('叔父家','');
+    await n('你把听到的一样一样摆在叔父面前：阿迦特看见的、书记说的、耶孙蜡板上的数目。');
+    await s('uncle','……是我。');
+    await s('uncle','我在地方官面前说：让耶孙作保，让那犹太人走，现在这几位地方官在任一天，就不准他回来。不然罗马要来查问，说帖撒罗尼迦窝藏叛党——那时候烧的就不是一个耶孙家，是整条皮革街，是你父亲留下的作坊！');
+    await s('uncle','我保住了你们。你倒来审我？');
+    S.flags.uncleKnown=true;
+    const c=await choose([{t:'当着众弟兄揭发他',v:'expose',sub:'让大家知道是谁'},{t:'只在这里，对他一个人说',v:'private'},{t:'什么也不说，转身离开',v:'silent'}]);
+    if(c==='expose'){
+      await n('那天晚上，你在聚会里说出了一切。有人愤怒，有人沉默。耶孙垂着头——他瞒了大家这么久。');
+      fx({fire:-1}); charFx('jason',-1,-1); S.flags.uncleExposed=true;
+    } else if(c==='private'){
+      await s('me','叔父，你要保住的东西，我明白。可是你把一个昼夜为我们做工、一文不取的人赶走了。我不恨你。我只是不能再假装没事。');
+      await n('叔父的手在发抖。他转过身去，很久没有说话。');
+      fx({fire:1}); S.flags.unclePrivate=true;
+    } else { await n('你转身离开。那句话卡在喉咙里，一直卡着。'); S.weary=clamp(S.weary+1,0,5); }
+    return 1;
+  },
+  3:async()=>{
+    place('耶孙家','黄昏');
+    await n('这是最难熬的一个黄昏。');
+    if(!S.flags.uncleKnown){
+      await s('jason','（他终于开口）保状的条件……是保罗不能回来。现在这几位地方官在任一天，他就一天不能进城。是城里的会首们出的主意。');
+      S.flags.bondKnown=true;
+    }
+    await tempt('保罗不会回来了。他不要你们了。');
+    await n('门开了。一个年轻人站在门口，风尘仆仆。');
+    await s('timothy','平安！我是提摩太。保罗打发我来——他自己来不了，可是他一天也没有忘记你们。');
+    await v('帖前 3:2','打发我们的兄弟在基督福音上作神执事的提摩太前去，坚固你们，并在你们所信的道上劝慰你们，');
+    S.flags.timothy=true; S.flags.gathered=true;
+    fx({fire:1,oil:3});
+    await n('那一夜，大家围着提摩太，问了很多很多保罗的事。屋里很久没有这样亮过。');
+    return 2;
+  }
+};
+
+EV.a2[1]={
+  1:async()=>{
+    place('你的作坊','上午');
+    await n('作坊里空了两个位子：加力普没来。西公都答应今天送来的生皮，也没有到。');
+    await n('同样是没来。是不守规矩，还是软弱？要去看了才知道。');
+    return 0;
+  },
+  3:async()=>{
+    await gather();
+    await s('nikon','弟兄们，主的日子近了！还缝什么帐棚？');
+    await n('几个年轻人跟着喊「阿们」。'+(S.flags.kalipBack?'':'加力普也在里面。'));
+    await n('耶孙站在门边，默默地数着剩下的饼。');
+    return 1;
+  }
+};
+EV.a2[2]={2:async()=>{
+  place('你的作坊','下午');
+  await n('下午，菲丽娜来了。她是公会兄弟菲罗劳斯的妻子。');
+  await n('信主以前，你和她有过一段私情。菲罗劳斯不知道。信主以后，你断了。');
+  await s('philina','我来订一条腰带。（她压低声音）……今晚菲罗劳斯去安菲波里收账，不在家。');
+  S.flags.philinaAsked=true;
+  const k=await choose([
+    {t:'「腰带我会托人送去。请你以后不要再来了。」',v:'flee',sub:'这一单生意就没了'},
+    {t:'去找提摩太，把从前的事说出来',v:'light'},
+    {t:'「只是谈生意，没什么。」',v:'push'}]);
+  if(k==='flee'){ await n('她咬着嘴唇走了。这一单，你没有做成。'); fx({fire:1}); S.flags.fled=true; }
+  else if(k==='light'){ await confess(); }
+  else { await n('她笑了笑，走了。你告诉自己：只是生意。'); S.grey=Math.min(3,S.grey+1); S.flags.philinaOpen=true; }
+  return 1;
+}};
+EV.a2[3]={
+  1:async()=>{
+    place('你的作坊','耶孙来了');
+    await n('耶孙来作坊找你。这是他第一次开口借饼。');
+    await s('jason','保状又要补钱。尼肯带来的那些年轻人，天天在我家吃……我不能赶他们走。');
+    const g=await choose([{t:'给他三个饼',v:3,dis:S.bread<3},{t:'给他一个饼',v:1,dis:S.bread<1},{t:'「我自己也不够。」',v:0}]);
+    if(g){ fx({bread:-g}); charFx('jason',g>=3?2:1,1); S.flags.gaveToday=true; await n('耶孙接过饼，没有说谢，只是握了一下你的手。'); }
+    else await n('耶孙点点头，走了。他的背影比从前弯了。');
+    if(S.flags.secHelped) await n('后来你才知道，西公都病刚好，就把自己的生皮钱给了耶孙。没有告诉任何人。');
+    return 1;
+  },
+  3:async()=>{
+    S.flags.banquetDone=true;
+    place('叔父家 · 宴席','夜');
+    await n('叔父订了一批挽具，要你在他宴客那晚送去。他是叔父，你不能不去。');
+    await n('宴席过了三巡。客人醉了，开始拉扯端酒的婢女和少年奴隶。在这座城里，没有人觉得这有什么不对。');
+    await n('阿迦特端着酒壶从你身边经过，一个客人一把把她拽了过去。她看了你一眼。');
+    const nodes=['菲丽娜也在席上，坐在她丈夫菲罗劳斯身边，隔着灯看你。','叔父叫人给你倒酒：「今晚别走了，客房给你留着。」','有人凑在你耳边说：「这里没有人管你信什么神。」'];
+    let tight=0,round=0,done=false;
+    while(!done){
+      drawNet(tight);
+      if(round<nodes.length) await n(nodes[round]);
+      const k=await choose([
+        {t:'站出来，把阿迦特护到身后',v:'protect',sub:'会得罪叔父的客人'},
+        {t:'低声祷告',v:'pray'},
+        {t:'咬牙撑住：点完货、收了钱再走',v:'push'},
+        {t:'放下货，马上离开',v:'flee',sub:'这批货的钱就收不到了'}],'网在收紧。你……');
+      round++;
+      if(k==='protect'){
+        await n('你走过去，把阿迦特拉到身后：「她是和我一起长大的妹妹。」');
+        await n('那个客人骂了一句。叔父的脸沉了下来。');
+        await s('uncle','你给我出去。货钱，一个子儿也别想要。');
+        charFx('agathe',2,2); S.flags.protected=true; fx({fire:1}); done=true;
+      } else if(k==='pray'){
+        if(S.fire>=3){ tight=Math.max(0,tight-1); await n('你低声呼求。手里的灯一亮，像烧断了一根缠上来的线。'); }
+        else await n('你想祷告，话却像被闷住了。');
+      } else if(k==='push'){
+        tight++; S.grey=Math.min(3,S.grey+1); await n('你告诉自己：我撑得住。'); drawNet(tight);
+      } else {
+        await n('你放下挽具就走。身后传来阿迦特一声低低的叫。你没有回头。');
+        charFx('agathe',-1,-1); done=true;
+      }
+      if(!done&&tight>=3){
+        await n('等你回过神来，你已经站在客房门口。菲丽娜就在门里。');
+        await n('网收紧了。手里的灯猛地一晃——你想起保罗在作坊里说过的话：「远避淫行。」');
+        await n('你转身跑了出去，一直跑到街上。');
+        fx({fire:-2}); S.weary=clamp(S.weary+2,0,5); S.flags.edge=true; charFx('agathe',-1,-1); done=true;
+      }
+      if(!done&&round>=4){ await n('夜深了。你终于脱身离开。阿迦特还在席间。'); charFx('agathe',-1,0); done=true; }
+    }
+    return 1;
+  }
+};
+EV.a2[4]={3:async()=>{
+  await gather();
+  await n('这天的聚会，有几个人站起来说话。');
+  let good=0;
+  const test=async(spk,line,crowd,truth,why,onHold,onReject)=>{
+    await s(spk,line); if(crowd) await n(crowd);
+    let k=await choose([{t:'持守这话',v:'hold'},{t:'不听这话',v:'reject'},{t:'察验：这话和保罗教导的一样吗？',v:'test'}]);
+    if(k==='test'){ await n(why); k=await choose([{t:'持守这话',v:'hold'},{t:'不听这话',v:'reject'}]); }
+    if((k==='hold')===truth) good++;
+    if(k==='hold') await onHold(); else await onReject();
+  };
+  await test('nikon','主的日子已经到了！灵感动我说：不必再做工，变卖一切，等候吧！','几个年轻人喊「阿们」。'+(S.flags.kalipBack?'':'加力普也在其中。'),false,
+    '你想起保罗说过：「主的日子来到，好像夜间的贼一样。」他又要你们「亲手做工」。这话对不上。',
+    async()=>{ await n('你点了点头。年轻人们欢呼起来。'); if(!S.flags.kalipBack) charFx('kalip',-1,0); fx({fire:-1}); },
+    async()=>{ await s('me','弟兄，保罗教导我们要亲手做工。主的日子像夜间的贼——没有人知道是什么时候。'); await n('尼肯沉默了。'); });
+  await test('agathe','（声音很小）……那召你们的，是信实的。','有人皱起眉头：「一个婢女，也说预言？」好几个人摇头。',true,
+    '这话叫人刚强，叫人得安慰，和保罗所传的一致。说话的人是谁，并不改变这话是真的。',
+    async()=>{ await s('me','她说的是真的。'); await n('房间安静了。阿迦特抬起头，看了你一眼。'); charFx('agathe',1,1); },
+    async()=>{ await n('你也跟着低下了头。阿迦特没有再说话。'); charFx('agathe',-2,-1); S.flags.agatheDespised=true; });
+  await test('timothy','保罗嘱咐我转告：我们在你们那里的时候已经说过，我们必受患难。','',true,
+    '保罗在作坊里说过同样的话。后来果然应验了。',
+    async()=>{ await n('你点点头。患难并没有出乎意料。'); },
+    async()=>{ await n('你不愿意听。可是患难没有因此少一点。'); fx({fire:-1}); });
+  if(good===3){ await n('你没有一概不听，也没有一概照收。你凡事察验。'); fx({fire:1}); }
+  if(S.flags.protected||S.flags.confessed){
+    await n('散会前，门口站着一个人——菲罗劳斯。');
+    await s('philolaus',S.flags.protected?'阿迦特说，你们这里有一位王，叫人不再拉扯别人的婢女。我想听听。':'提摩太在公会门口讲过几次。我想……来听听。');
+    S.flags.philolausCame=true; S.chars.philolaus.lamp=3;
+    await n('他坐在最后一排。你的心跳得很快。他如今，也要成为你的弟兄了。');
+  }
+  return 1;
+}};
+
+EV.a3[1]={
+  1:async()=>{
+    if(!S.flags.kalipBack) return 0;
+    place('你的作坊','上午');
+    await s('kalip','师傅，这条腰带快缝好了。（他咧嘴一笑）等主来那天，你系着它，跟在我后面跑。');
+    await n('他手很快。比你刚教他的时候，快多了。');
+    return 0;
+  },
+  3:async()=>{
+    await gather();
+    if(!S.flags.kalipBack){
+      await n('加力普也来了。他瘦了很多。');
+      await s('kalip','师傅……明天，我回作坊做工，好吗？');
+      await choose([{t:'「好。明天一早，我等你。」',v:1}]);
+    }
+    await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
+    await n('大家都笑了。连尼肯都笑了。');
+    return 1;
+  },
+  4:async()=>{
+    place('回家的路上','夜');
+    await s('kalip','师傅，你说主来的那天，是什么样子？');
+    const k=await choose([{t:'「像夜间的贼——没有人知道是什么时候。」',v:'thief',hide:!S.words.includes('thief')},{t:'「我也不知道。保罗还没讲完就走了。」',v:'idk'}]);
+    if(k==='thief') await s('kalip','那我得天天醒着。这样才能第一个跑出去。');
+    else await s('kalip','那等他回来，我第一个问他。');
+    await n('他打了个哈欠，冲你挥挥手，拐进了自家的巷子。');
+    await n('那是你最后一次看见他醒着。');
+    await nightWalk(nightCfg());
+    return 1;
+  }
+};
+EV.a3[2]={
+  0:async()=>{
+    S.flags.kalipDead=true; S.chars.kalip.dead=true;
+    place('克律西家','清晨');
+    await n('天还没亮，克律西的哭声把整条街都叫醒了。');
+    await n('加力普睡了。夜里还好好的，早上就没有再醒过来。');
+    await n('你站在门口，手里还拿着他缝了一半的腰带。');
+    await tempt(S.flags.kalipBack?'你们的主说要来。他等到了吗？':'要是你那时候把他从市场上拉回来……');
+    if(S.flags.guild){
+      await n('公会派人来了。按规矩，会员的学徒由公会出钱埋葬——要请祭司，要在坟前为守护神奠酒。');
+      const k=await choose([{t:'接受公会的安排',v:'g'},{t:'谢绝，由弟兄们自己埋葬他',v:'b',sub:'从此和公会断了'}]);
+      if(k==='g'){ await n('祭司在坟前奠酒的时候，克律西转过脸去。'); fx({fire:-1}); charFx('chrysis',-1,0); }
+      else { S.flags.guild=false; S.flags.expelled=true; await n('公会的人冷笑着走了。'); }
+    } else {
+      await n('公会不肯收尸。加力普跟着你离开了公会，丧葬钱没有他的份。');
+      await n('城里的规矩是：没有人埋，就只能丢在城外。');
+    }
+    await n('弟兄们来了。耶孙、西公都、提摩太，还有你。你们自己挖坟，自己抬他。');
+    await n('掘墓的人说，坟地的钱已经有人付过了。问是谁，他只是摇头。');
+    if(S.flags.unclePrivate) await n('人群外面，你看见一个熟悉的背影，一闪就不见了。');
+    await s('neighbor','（她把一块蜡板递给克律西）我儿子死的时候，人家写给我的。你看看，或许有点安慰。');
+    await letter('邻居的慰问信','「我为你们哭泣，正如我为自己的孩子哭泣……可是面对这样的事，谁也无能为力。所以，你们彼此安慰吧。」');
+    await n('坟地另一头，一块旧墓碑上刻着：「我本不存在，我存在过，我不再存在，我不在乎。」');
+    await s('chrysis','彼此安慰……拿什么安慰？');
+    await n('你张开口，想说点什么。可是你手里没有这样的话。保罗还没有教过你们。');
+    const k=await choose([{t:'陪她坐着',v:'stay'},{t:'「我们必受患难。」',v:'affl',hide:!S.words.includes('affl')},{t:'「他说过要第一个……」（你说不下去）',v:'joke'}]);
+    if(k==='stay'){ await n('你们一直坐到天黑。'); charFx('chrysis',-1,1); }
+    else if(k==='affl'){ await n('她推开了你。'); charFx('chrysis',-2,-1); }
+    else { await n('她哭得更厉害了。你也是。'); charFx('chrysis',-1,1); }
+    return 3;
+  },
+  3:async()=>{
+    await gather();
+    await s('nikon','你们看见了吗？又一个！主为什么还不来？');
+    await s('timothy','这个问题，我会带去问保罗。');
+    return 1;
+  }
+};
+EV.a3[3]={1:async()=>{
+  place('帖撒罗尼迦','凯撒节期');
+  await n('凯撒的节期到了。全城张灯结彩，街口的石柱上新刷了大字：「平安稳妥」。');
+  await n('凯撒庙前在献祭，祭肉一筐一筐分到各条街。');
+  let pos=.07; drawCurve(pos);
+  await n('这是城里的人心。大多数人挤在中间。你站在尾端。');
+  const P=[
+    {t:'邻居们都在门上挂了桂枝，在门口为凯撒的平安烧一撮香。只有你家门口空着。',c:'也挂一枝桂枝，烧一撮香',tl:'门口空着',
+      cf:async()=>{ await n('邻居对你点了点头。'); },tf:async()=>{ await n('半夜，有人往你门上扔了一块石头。'); S.weary=clamp(S.weary+1,0,5); }},
+    {t:S.flags.guild?'公会大宴，人人都去。叔父说：「你只要喊一句『平安稳妥』，喝一杯。」':'公会差人来说：「在大宴上喊一句『平安稳妥』，喝一杯，会籍还给你，订单也还给你。」',c:'去，喊一句，喝一杯',tl:'不去',
+      cf:async()=>{ await n('订单回来了。'); fx({bread:3}); },tf:async()=>{ await n('这个月的订单又少了。'); fx({bread:-1}); }},
+    {t:'天黑了，全城的人都在喝酒。加力普从前的朋友们拉住你：「今晚谁不醉，就是不给凯撒面子。」',c:'跟他们去喝',tl:'回家，提着灯守夜',
+      cf:async()=>{ await n('你醒来时，灯已经快灭了。'); },tf:async()=>{ await n('你回到家，点亮灯，坐着等天亮。'); }}
+  ];
+  for(const p of P){
+    await n(p.t);
+    const k=await choose([{t:p.c,v:'c',sub:'往中间靠一点，日子会好过些'},{t:p.tl,v:'t',sub:'留在尾端'}]);
+    if(k==='c'){ pos=Math.min(.5,pos+.14); fx({fire:-1}); await p.cf(); } else await p.tf();
+    drawCurve(pos);
+  }
+  const tail=['jason','secundus','agathe','chrysis','nikon'].filter(id=>!S.chars[id].dead&&S.chars[id].lamp>=3).map(nm);
+  drawCurve(pos,tail);
+  if(tail.length) await n(`尾端并不孤单。夜里，你看见还有几盏灯亮着：${tail.join('、')}。`);
+  else await n('尾端好像只剩你一个人。你的灯在风里晃。');
+  return 3;
+}};
+EV.a3[4]={0:async()=>{
+  place('西门','清晨');
+  await s('timothy','睡了的人怎样？主的日子什么时候来？我把你们的问题带去给保罗。');
+  await n('你送他到西门。和那一夜送保罗一样。');
+  return 1;
+}};
+
+/* ───────── 序章 ───────── */
+function escortNight(){
+  const watch=async()=>{ place('巷口','巡夜的人'); await n('巡夜的人举着火把迎面过来。你们贴在墙后，屏住气，等了很久。'); if(NW){ NW.steps=Math.max(1,NW.steps-5); } S.weary=clamp(S.weary+1,0,5); };
+  return {start:'W',goal:'E',steps:44,noDawnPenalty:true,
+    ents:[{type:'net',at:[5,5],meet:watch},{type:'net',at:[11,7],meet:watch},{type:'net',at:[3,9],meet:watch}],
+    onEnd:async why=>{ if(why==='dawn'){ place('西门','天快亮了'); await n('天快亮时，你们才摸到西门。'); } }};
+}
+async function prologue(){
+  S.act='pro'; hud(); renderScroll();
+  place('帖撒罗尼迦 · 皮革街','夜');
+  await n('帖撒罗尼迦。夜。');
+  await n('皮革街上的狗忽然一起叫起来。');
+  await s('kalip','师傅！师傅！一大群人拿着火把往耶孙家去了——喊着要抓保罗！');
+  await n('你放下锥子。作坊后间，保罗和西拉还借着一盏小油灯，在给明天要交的帐棚缝最后一道边。');
+  const c=await choose([{t:'把他们藏进后间的皮料堆里',v:'hide'},{t:'先吹灭作坊的灯',v:'dark'}]);
+  if(c==='dark') await n('你吹灭了灯。黑暗里，你听见保罗低声说：「不要怕。」你摸黑把他们藏进了皮料堆。');
+  else await n('生皮的气味很冲。保罗和西拉缩在皮料底下，一动不动。');
+  await n('火把的光从门缝外一闪一闪地过去。远处有人在砸门。');
+  await v('徒 17:5-6','但那不信的犹太人心里嫉妒，招聚些市井匪类，聚集成群，耸动合城的人，闯进耶孙的家，要把保罗、西拉带到百姓那里。找不着他们，就把耶孙和几个弟兄拉到地方官那里……');
+  await s('kalip','师傅……他们会找到这里来吗？');
+  await n('你没有回答。你在想：这一切，是怎么开始的？');
+
+  place('三个月前','你的作坊');
+  await n('三个月前。');
+  await n('一个外地口音的犹太人站在你作坊门口，手上全是老茧。');
+  await s('paul','听说这里收会缝帐棚的人。我叫保罗，从大数来，做这一行很多年了。');
+  await s('kalip','师傅，他手上的茧比你还厚！');
+  await n('你递给他一块皮，自己也拿起一块。缝皮的规矩：针走到亮处时下针。');
+  const h=await playWork();
+  place('你的作坊','');
+  await s('paul',h>=3?'手很稳。':'慢一点。皮子不会跑。');
+  fx({bread:h>=4?3:h>=2?2:1});
+  await n('那以后，保罗白天在你作坊里做工，安息日到会堂去讲论。晚上，他在作坊后间对来听的人讲一位从死里复活的王。');
+  await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
+  await s('paul','（他笑了）好，你第一个。');
+  await n('从那天起，加力普几乎天天都要说一遍这句话。');
+  await n('月底，你按行规把工钱数好，放在保罗面前。');
+  await s('paul','这份留着，给加力普买饼吧。我们昼夜做工，是不要叫你们任何一个人受累。');
+  await n('你在账板上记下：「保罗，工钱，未取。」');
+  gain('evidence','ledger');
+  await n('有一天，腓立比来了两个弟兄，带着银子。');
+  await v('腓 4:16','就是我在帖撒罗尼迦，你们也一次两次打发人供给我的需用。');
+  await n('保罗把银子换成饼，第一篮就放在你作坊的桌上。你家的饼，本来只够吃到月底。');
+  fx({bread:4});
+  await n('保罗在作坊里说过很多话。有几句，你一直记得。');
+  await learn('affl','保罗说过'); await learn('work','保罗吩咐过'); await learn('holy','保罗预先说过'); await learn('thief','保罗说过');
+  await n('阿迦特常常站在作坊门外。她是你叔父家的婢女，从小和你一起长大。');
+  await s('agathe','少主人，我在会堂窗外听过他讲。我比你先信的。（她低下头）……我可以进来听吗？');
+  const a=await choose([{t:'「进来吧。在这里，没有主人和婢女。」',v:1},{t:'「叔父知道了会打你的。站在门外听吧。」',v:0}]);
+  if(a){ await n('她迟疑了一下，跨过了门槛。'); charFx('agathe',1,1); }
+  else { await n('她点点头，仍旧站在门外。'); charFx('agathe',-1,0); }
+
+  place('你的家','神龛');
+  await n('那天夜里，你回到家，看着墙上的神龛：皮革匠的守护神，旁边还有一尊小小的凯撒像——是叔父送的。');
+  await n('你从小每天早上都在这里奠一滴酒。');
+  const t=await choose([{t:'把神龛取下来',v:'turn'},{t:'先留着，免得叔父问起',v:'keep'}]);
+  if(t==='keep') await n('你把手放下了。可是那一夜，你睡不着。天亮时，你还是把它取了下来。');
+  await n('你把神龛包在一块旧皮里。手里空了，心里却像有什么亮了起来。');
+  S.flags.lit=true; S.fire=3; hud();
+  await v('帖前 1:9','……你们是怎样离弃偶像，归向神，要服侍那又真又活的神，');
+  toast('灯点着了','up');
+  await n('这盏灯不是你点着的。往后的日子，它有多亮，要看你肯不肯向那点着它的敞开。');
+
+  place('皮革街','暴乱之后');
+  await n('现在，又是那一夜。');
+  await n('天亮时，消息传来：耶孙被拉到地方官面前。有人喊：「这些人都违背该撒的命令，说另有一个王耶稣。」');
+  await v('徒 17:8-9','众人和地方官听见这话，就惊慌了；于是取了耶孙和其余人的保状，就把他们释放了。');
+  await s('jason','（他脸色发白）他们收了保状。保罗……今夜就得走。别问了。今夜就走。');
+  await v('徒 17:10','弟兄们随即在夜间打发保罗和西拉往庇哩亚去。');
+  await n('你提着灯，带他们穿过城，到西门去。夜里，灯照多远，你就看见多远。');
+  await nightWalk(escortNight());
+  place('西门','夜');
+  await s('paul','亚里达古，我们只是暂时离别。面目离别，心里却不离别。');
+  await s('paul','这把锥子跟了我很多年，磨秃了。留给你。');
+  gain('evidence','awl');
+  await s('silas','主的平安与你们同在。');
+  await n('他们的身影消失在厄纳齐亚大道的黑暗里。');
+  await s('kalip','（小声）师傅，他还会回来吗？');
+
+  view('room');
+  await n('几个月后。一个夜晚，耶孙的家。');
+  await n('一位从哥林多来的弟兄，带来一封信。');
+  await n('房间很暗。只有耶孙手边的一盏灯亮着。你看不清还有谁坐在这里。');
+  await s('jason','是保罗的信。他嘱咐，要念给众弟兄听。');
+  read(0);
+  await v('帖前 1:1','保罗、西拉、提摩太写信给帖撒罗尼迦在父神与主耶稣基督里的教会。愿恩惠、平安归与你们！');
+}
+
+/* ───────── 第一幕 ───────── */
+async function act1(){
+  S.act='a1'; S.day=0; view('room'); read(1);
+  await v('帖前 1:2-3','我们为你们众人常常感谢神，祷告的时候提到你们，在神我们的父面前，不住地记念你们因信心所做的工夫，因爱心所受的劳苦，因盼望我们主耶稣基督所存的忍耐。');
+  await v('帖前 1:6','并且你们在大难之中，蒙了圣灵所赐的喜乐，领受真道，就效法我们，也效法了主；');
+  await learn('joy');
+  await v('帖前 1:9-10','……你们是怎样离弃偶像，归向神，要服侍那又真又活的神，等候他儿子从天降临，就是他从死里复活的，那位救我们脱离将来忿怒的耶稣。');
+  await n('耶孙念到这里，停了一下。灯芯一跳。你想起保罗刚走的那些日子。');
+  place('保罗离开后','第一幕 · 信');
+  await n('第一幕 · 信\n\n保罗走了。他是不是骗了钱就跑？他为什么不能回来？');
+  await runDays(4);
+  view('room'); read(2);
+  await v('帖前 2:9','弟兄们，你们记念我们的辛苦劳碌，昼夜做工，传神的福音给你们，免得叫你们一人受累。');
+  if(S.evidence.includes('ledger')) await n('你想起账板上那一行：「保罗，工钱，未取。」');
+  await learn('toil');
+  await v('帖前 2:13','为此，我们也不住地感谢神，因为你们听见我们所传神的道，就领受了；不以为是人的道，乃以为是神的道。这道实在是神的，并且运行在你们信主的人心中。');
+  read(3);
+  await v('帖前 2:17-18','弟兄们，我们暂时与你们离别，是面目离别，心里却不离别；我们极力地想法子，很愿意见你们的面。所以我们有意到你们那里；我保罗有一两次要去，只是撒但阻挡了我们。');
+  if(S.flags.uncleKnown||S.flags.bondKnown) await n('念到「撒但阻挡了我们」，耶孙的声音顿了一下。房间里，好几个人都知道那张保状是怎么回事。');
+  await v('帖前 3:3','免得有人被诸般患难摇动；因为你们自己知道，我们受患难原是命定的。');
+  await v('帖前 3:5','为此，我既不能再忍，就打发人去，要晓得你们的信心如何，恐怕那诱惑人的到底诱惑了你们，叫我们的劳苦归于徒然。');
+  await n('「那诱惑人的。」你想起那些夜里，暗处的声音。');
+  await n('灯光往房间里多照了一点。');
+  reveal(['nikon','secundus']);
+  await n(`你看见了尼肯（${seatTxt('nikon')}），和西公都（${seatTxt('secundus')}）。`);
+}
+function seatTxt(id){ return {lit:'他在',dim:'他在，可是脸是暗的',absent:'他的位子空着',dead:'位子空着'}[seatState(id)]||''; }
+
+/* ───────── 灯下插曲 ───────── */
+async function interlude(){
+  S.act='int'; view('room'); read(4);
+  await v('帖前 3:6','但提摩太刚才从你们那里回来，将你们信心和爱心的好消息报给我们，又说你们常常记念我们，切切地想见我们，如同我们想见你们一样。');
+  await n('信心，和爱心。');
+  await n('房间里有人彼此看了一眼。没有提到盼望。');
+  document.querySelector('#armor i[data-a="hope"]').classList.add('flick');
+  await n('你胸前好像少了什么，头上也是空的。');
+  await v('帖前 3:8','你们若靠主站立得稳，我们就活了。');
+  await v('帖前 3:10','我们昼夜切切地祈求，要见你们的面，补满你们信心的不足。');
+  await v('帖前 3:12-13','又愿主叫你们彼此相爱的心，并爱众人的心，都能增长、充足，如同我们爱你们一样；好使你们当我们主耶稣同他众圣徒来的时候，在我们父神面前，心里坚固，成为圣洁，无可责备。');
+  S.armor.faith=true; hud(); toast('你得着了护心镜的一半：信','up');
+  await n('这不是你挣来的。是保罗为你们祷告的时候，神给的。');
+  reveal(['paul']);
+  await n('灯光照到了一个空位子。那是保罗的。');
+}
+
+/* ───────── 第二幕 ───────── */
+async function act2(){
+  S.act='a2'; S.day=0; view('room'); read(5);
+  await v('帖前 4:1','弟兄们，我还有话说：我们靠着主耶稣求你们、劝你们，你们既然受了我们的教训，知道该怎样行可以讨神的喜悦，就要照你们现在所行的更加勉励。');
+  await n('灯芯一跳。你想起提摩太住在城里的那些日子。');
+  place('提摩太在城里的日子','第二幕 · 爱');
+  await n('第二幕 · 爱\n\n耶孙撑得住吗？加力普怎么了？');
+  await runDays(4);
+  view('room'); read(5);
+  await v('帖前 4:3-5','神的旨意就是要你们成为圣洁，远避淫行；要你们各人晓得怎样用圣洁、尊贵守着自己的身体；不放纵私欲的邪情，像那不认识神的外邦人。');
+  await v('帖前 4:6-8','不要一个人在这事上越分，欺负他的弟兄；因为这一类的事，主必报应，正如我预先对你们说过，又切切嘱咐你们的。神召我们，本不是要我们沾染污秽，乃是要我们成为圣洁。所以，那弃绝的，不是弃绝人，乃是弃绝那赐圣灵给你们的神。');
+  if(S.flags.philolausCame) await n('菲罗劳斯坐在最后一排，低着头听。你不敢回头。');
+  await learn('avenge');
+  await v('帖前 4:9-10','论到弟兄们相爱，不用人写信给你们，因为你们自己蒙了神的教训，叫你们彼此相爱。你们向马其顿全地的众弟兄固然是这样行，但我劝弟兄们要更加勉励。');
+  await learn('love');
+  await v('帖前 4:11-12','又要立志做安静人，办自己的事，亲手做工，正如我们从前所吩咐你们的，叫你们可以向外人行事端正，自己也就没有什么缺乏了。');
+  S.armor.love=true; hud(); toast('护心镜完成了：信和爱','up');
+  await n('护心镜完成了。你没有挣到它——是神的教训，叫你们彼此相爱。');
+  await n('灯光往房间里又多照了一点。');
+  reveal(['agathe','philolaus']);
+  await n(`你看见了阿迦特（${seatTxt('agathe').replace('他','她')}）。`);
+}
+
+/* ───────── 第三幕 ───────── */
+async function act3(){
+  S.act='a3'; S.day=0; view('room'); read(6);
+  await n('耶孙翻到下一段。他念了一个开头，就停住了。');
+  await s('jason','「论到睡了的人……」');
+  await n('他的声音哑了。房间里，有一个位子一直空着。');
+  await n('灯芯一跳。你想起那些日子。');
+  place('那些日子','第三幕 · 望');
+  await n('第三幕 · 望\n\n睡了的人去了哪里？主的日子什么时候来？');
+  await runDays(4);
+  view('room'); read(6);
+  await v('帖前 4:13','论到睡了的人，我们不愿意弟兄们不知道，恐怕你们忧伤，像那些没有指望的人一样。');
+  await n('「不愿意弟兄们不知道。」这是你们从来没有听过的话。');
+  await v('帖前 4:14','我们若信耶稣死而复活了，那已经在耶稣里睡了的人，神也必将他与耶稣一同带来。');
+  if(seatState('nikon')!=='absent') await n('尼肯猛地抬起了头。');
+  await v('帖前 4:16','因为主必亲自从天降临，有呼叫的声音和天使长的声音，又有神的号吹响；那在基督里死了的人必先复活。');
+  await n('房间里，有人笑出了声，又哭了。');
+  const sp=seatState('chrysis')!=='absent'?'chrysis':seatState('secundus')!=='absent'?'secundus':'me';
+  await s(sp,'他说过的……「等主来了，我第一个跑去迎接，谁也别跟我抢。」');
+  await n('谁也没有跟他抢。他真的是第一个。');
+  await v('帖前 4:17-18','以后我们这活着还存留的人必和他们一同被提到云里，在空中与主相遇。这样，我们就要和主永远同在。所以，你们当用这些话彼此劝慰。');
+  await learn('these');
+  await n('「这些话。」你终于有了可以说的话。');
+  reveal(['chrysis','kalip']);
+  read(7);
+  await v('帖前 5:2-3','因为你们自己明明晓得，主的日子来到，好像夜间的贼一样。人正说平安稳妥的时候，灾祸忽然临到他们，如同产难临到怀胎的妇人一样，他们绝不能逃脱。');
+  await v('帖前 5:5-6','你们都是光明之子，都是白昼之子；我们不是属黑夜的，也不是属幽暗的。所以，我们不要睡觉，像别人一样，总要警醒谨守。');
+  await learn('light');
+  await v('帖前 5:8','但我们既然属乎白昼，就应当谨守，把信和爱当做护心镜遮胸，把得救的盼望当做头盔戴上。');
+  S.armor.hope=true; hud(); toast('你得着了头盔：盼望','up');
+  await n('头上那一格，终于不再空着了。');
+  await v('帖前 5:9-11','因为神不是预定我们受刑，乃是预定我们借着我们主耶稣基督得救。他替我们死，叫我们无论醒着，睡着，都与他同活。所以，你们该彼此劝慰，互相建立，正如你们素常所行的。');
+  await learn('live');
+}
+
+/* ───────── 终章 ───────── */
+function finaleNight(){
+  const E=[], need=id=>seatState(id)!=='lit';
+  if(need('chrysis')) E.push({type:'person',id:'chrysis',at:'C',need:1,meet:()=>finVisit('chrysis')});
+  if(need('nikon')) E.push({type:'person',id:'nikon',at:'M',need:1,meet:()=>finVisit('nikon')});
+  if(need('agathe')) E.push({type:'person',id:'agathe',at:'U',need:1,meet:()=>finVisit('agathe')});
+  E.push({type:'whisper',at:[9,5],meet:()=>tempt('今晚他们不会回来的。')});
+  return {start:'J',goal:'J',steps:50,dawn:true,noDawnPenalty:true,ents:E,
+    onEnd:async why=>{ place('夜','快天亮了'); await n(why==='dawn'?'东方开始发白。你提着灯，回到耶孙家。':'你提着灯，回到耶孙家。'); }};
+}
+async function finVisit(id){
+  await doVisit(id,{night:true,max:3});
+  if(S.chars[id].lamp>=3) await n(`${nm(id)}站了起来，跟着你的灯，往耶孙家走。`);
+  else await n(`${nm(id)}没有跟你走。也许，还要再等一等。`);
+}
+const GREET={
+  nikon:'「平安。」他抱住你，抱得很紧。',
+  secundus:'「平安。」他小声说：「你还记得问我好不好。」',
+  agathe:'「平安，弟兄。」——她第一次没有叫你「少主人」。',
+  chrysis:'「平安。」她把那条没缝完的腰带放进你手里。',
+  philolaus:'「平安……弟兄。」他看着你的眼睛。你知道，有些话，总有一天要对他说。'
+};
+async function finale(){
+  S.act='fin'; S.day=0; view('room'); read(8);
+  await v('帖前 5:12-13','弟兄们，我们劝你们敬重那在你们中间劳苦的人，就是在主里面治理你们、劝戒你们的；又因他们所做的工，用爱心格外尊重他们。你们也要彼此和睦。');
+  await learn('honor');
+  await v('帖前 5:14','我们又劝弟兄们，要警戒不守规矩的人，勉励灰心的人，扶助软弱的人，也要向众人忍耐。');
+  await n('耶孙念到这里，停了下来。他抬起头，看着房间里那些空位子和暗着的脸。');
+  await s('jason','这一句……不是念的，是要去做的。');
+  await n('你胸前有信和爱的护心镜，头上戴着盼望的头盔。你站了起来。');
+  if(seatState('secundus')!=='lit'){
+    await n('出门前，你看见西公都坐在最暗的角落里。这几个月，他一句怨言也没有。也没有人问过他好不好。');
+    await doVisit('secundus',{night:true,max:2});
+    view('room');
+  }
+  await n('今晚的城，你要再走一次。');
+  await nightWalk(finaleNight());
+  view('room');
+  await n('你回到耶孙家。灯光往房间里又多照了一点。');
+  reveal(SEATS);
+  await v('帖前 5:15-18','你们要谨慎，无论是谁都不可以恶报恶；或是彼此相待，或是待众人，常要追求良善。要常常喜乐，不住地祷告，凡事谢恩；因为这是神在基督耶稣里向你们所定的旨意。');
+  if(['lit','dim'].includes(seatState('agathe'))){
+    await v('帖前 5:19-21','不要消灭圣灵的感动；不要藐视先知的讲论。但要凡事察验，善美的要持守，');
+    await n('念到这里，阿迦特站了起来。');
+    await s('agathe','那召你们的，是信实的。');
+    if(S.flags.agatheDespised) await n('上一次她说这句话的时候，你跟着别人低下了头。');
+    const k=await choose([{t:'站起来说：「她说的是真的。」',v:1},{t:'（低下头）',v:0}]);
+    if(k) await n('房间安静了。耶孙低头看信，念出了下一节——');
+    else { await n('房间里没有人出声。阿迦特慢慢坐下了。'); charFx('agathe',-1,0,true); }
+  } else await v('帖前 5:19-22','不要消灭圣灵的感动；不要藐视先知的讲论。但要凡事察验，善美的要持守，各样的恶事要禁戒不做。');
+  read(9);
+  await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
+  if(['lit','dim'].includes(seatState('agathe'))) await n('「那召你们的本是信实的。」——和阿迦特说的，一字不差。');
+  await v('帖前 5:25-26','请弟兄们为我们祷告。与众弟兄亲嘴问安，务要圣洁。');
+  renderRoom();
+  const present=SEATS.filter(id=>['lit','dim'].includes(seatState(id))&&GREET[id]);
+  for(const id of present){ await choose([{t:`向${nm(id)}问安`,v:1}]); await s(id,GREET[id]); }
+  await s('jason','平安。（他把信折好）保罗嘱咐的，我们都念了。');
+  await v('帖前 5:27-28','我指着主嘱咐你们，要把这信念给众弟兄听。愿我们主耶稣基督的恩常和你们同在！');
+  await n('门外有脚步声。你起身打开门。');
+  await n('叔父狄奥多罗站在门口。');
+  if(S.flags.unclePrivate) await n('他手里攥着一枚铜钱。你认得——掘墓人手里，也有一枚一模一样的。');
+  else if(S.flags.uncleExposed) await n('他没有看你。');
+  await s('uncle','……我只是路过。');
+  await n('他没有进来，也没有走。');
+  await choose([{t:'把门开着',v:1},{t:'把灯往门口挪近一点',v:2}]);
+  await n('门开着。灯光照到了门槛外面，一点点。');
+}
+
+/* ───────── 结局 ───────── */
+function ending(){
+  const present=SEATS.filter(id=>['lit','dim'].includes(seatState(id)));
+  const empty=SEATS.filter(id=>['absent','empty','dead'].includes(seatState(id)));
+  const el=$('#ending');
+  el.innerHTML=`<div class="bigflame"></div><h1 style="font-size:28px">今晚</h1>
+  <p>坐在房间里的人：</p>
+  <ul>${present.map(id=>`<li>${nm(id)}${seatState(id)==='dim'?'（脸还是暗的）':''}</li>`).join('')||'<li>只有你和耶孙</li>'}</ul>
+  <p style="color:var(--dim)">空着的位子：${empty.map(nm).join('、')||'没有'}</p>
+  <p style="color:var(--dim)">「我们的盼望和喜乐，并所夸的冠冕是什么呢？……你们就是我们的荣耀，我们的喜乐。」（帖前 2:19-20）</p>
+  <p>保罗没有回来。患难也没有过去。东方开始发白。</p>
+  <div class="verse">那召你们的本是信实的，他必成就这事。<br><small>——帖撒罗尼迦前书 5:24</small></div>
+  <button id="again">再走一次</button>
+  <p class="note">经文引自和合本。保罗、西拉、提摩太、耶孙、亚里达古、西公都见于圣经（徒 17:1-10；20:4）。亚里达古的作坊与身世、狄奥多罗、加力普、尼肯与埃拉、克律西、阿迦特、菲丽娜、菲罗劳斯、邻居老妇，以及保状的条件，都是为游戏设计的故事想象。</p>`;
+  el.hidden=false;
+  try{ localStorage.removeItem('thess1'); }catch(e){}
+  $('#again').onclick=()=>location.reload();
+}
+
+/* ───────── 流程 ───────── */
+const ORDER=['pro','a1','int','a2','a3','fin'];
+const FN={pro:prologue,a1:act1,int:interlude,a2:act2,a3:act3,fin:finale};
+function save(next){ try{ localStorage.setItem('thess1',JSON.stringify({S,next})); }catch(e){} }
+function load(){ try{ return JSON.parse(localStorage.getItem('thess1')); }catch(e){ return null; } }
+async function run(from){
+  for(let i=ORDER.indexOf(from);i<ORDER.length;i++){ if(i>0) save(ORDER[i]); await FN[ORDER[i]](); }
+  ending();
+}
+function start(from,saved){
+  ['#title','#castpage'].forEach(q=>$(q).hidden=true);
+  S=saved||fresh(); renderScroll(); hud();
+  run(from).catch(err=>{ console.error(err); show('','', '（出错了：'+err.message+'）',''); });
+}
+document.addEventListener('keydown',e=>{
+  if(!$('#title').hidden||!$('#castpage').hidden||!$('#ending').hidden) return;
+  if(workStitch&&(e.code==='Space'||e.key==='Enter')){ e.preventDefault(); workStitch(); return; }
+  if(choosing){ const k=parseInt(e.key,10); if(k>=1&&k<=9){ const b=D.ch.querySelectorAll('button')[k-1]; if(b&&!b.disabled) b.click(); } return; }
+  if(NW&&!NW.busy){
+    const m={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[e.code];
+    if(m){ e.preventDefault(); nwMove(m[0],m[1]); return; }
+  }
+  if(e.code==='Space'||e.key==='Enter'){ e.preventDefault(); advance(); }
+});
+const SAVED=load();
+if(SAVED&&SAVED.next&&FN[SAVED.next]){ const b=$('#bcont'); b.hidden=false; b.textContent='继续：'+ACTN[SAVED.next]; b.onclick=()=>start(SAVED.next,SAVED.S); }
+$('#bstart').onclick=()=>{ $('#title').hidden=true; $('#castpage').hidden=false; };
+$('#bcast').onclick=()=>start('pro');
+requestAnimationFrame(lampLoop);
+</script>
+</body>
+</html>
