@@ -22,6 +22,9 @@ body{overflow:hidden;-webkit-user-select:none;user-select:none;touch-action:mani
 #when{color:var(--ink);font-weight:600;letter-spacing:.04em}
 #who{color:var(--amber);margin-left:8px;font-weight:400}
 #hudr{display:flex;align-items:center;gap:10px}
+#timer{font-family:'Noto Sans SC',sans-serif;font-variant-numeric:tabular-nums;font-size:15px;color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:3px 10px}
+#timer.low{color:#fff;background:#b0413e;border-color:#b0413e}
+#timer.up{color:var(--dim)}
 #hudr button{font:inherit;background:transparent;color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:4px 10px;cursor:pointer}
 #stage{position:relative;flex:1 1 auto;min-height:200px;overflow:hidden}
 .view{position:absolute;inset:0;display:none}
@@ -147,7 +150,7 @@ button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px
 </head>
 <body>
 <div id="app">
-  <header id="hud"><div><span id="when"></span><span id="who"></span></div><div id="hudr"><button id="bmenu">目录</button></div></header>
+  <header id="hud"><div><span id="when"></span><span id="who"></span></div><div id="hudr"><span id="timer" hidden></span><button id="bmenu">目录</button></div></header>
   <main id="stage">
     <section id="v-scene" class="view"><div><h2 id="ptitle"></h2><p id="psub"></p></div></section>
     <section id="v-map" class="view"><svg id="msvg" preserveAspectRatio="xMidYMid meet"></svg><div id="mhud"><span id="mh1"></span><span id="mh2"></span></div><div id="mtip" hidden></div><div id="mctl"></div></section>
@@ -193,8 +196,8 @@ button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px
     </table>
     <h3>为游戏设计的部分</h3>
     <table>
-      <tr><td>虚构人物<span class="tag made">设计</span></td><td>信差克莱翁、叔父狄奥多罗、学徒加力普、婢女阿迦特、尼肯与小女儿埃拉、克律西、会堂里的长者、富商、邻居老妇。</td></tr>
-      <tr><td>真实人物的<br>虚构细节<span class="tag made">设计</span></td><td>亚里达古是皮革匠、保罗在他作坊做工、他护送保罗往庇哩亚；耶孙保状的条件；西公都的性格；提摩太在城里的经历；西拉替保罗执笔；罗马总督驾临的节庆。经文都没有交代这些。</td></tr>
+      <tr><td>虚构人物<span class="tag made">设计</span></td><td>执笔人亚挪尼摩（希腊文 Ἀνώνυμος，「无名的人」；经文没有记载这封信由谁执笔）、信差克莱翁、叔父狄奥多罗、学徒加力普、婢女阿迦特、尼肯与小女儿埃拉、克律西、会堂里的长者、富商、邻居老妇。</td></tr>
+      <tr><td>真实人物的<br>虚构细节<span class="tag made">设计</span></td><td>亚里达古是皮革匠、保罗在他作坊做工、他护送保罗往庇哩亚；耶孙保状的条件；西公都的性格；提摩太在城里的经历；罗马总督驾临的节庆。经文都没有交代这些。</td></tr>
       <tr><td>推测的细节<span class="tag made">设计</span></td><td>保罗从哪个港口出海（徒 17:14 只说「往海边去」）；会堂里引用的旧约经文（徒 17:2-3 没有记载是哪几处）；信差走的路线。</td></tr>
     </table>
     <p class="note" style="text-align:left">地图的海岸线和河流来自 Natural Earth（公有领域），以今日地理为准。古代的帖撒罗尼迦湾西侧比今天更深入内陆。路程公里数按路线长度约略计算。</p>
@@ -206,11 +209,13 @@ button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px
   <h1 style="font-size:28px">目录</h1>
   <div class="sub">每一章都可以单独玩</div>
   <div id="setbox"></div>
+  <div><button class="big" id="btimes" style="font-size:15px;padding:6px 18px">用时记录</button></div>
   <div id="chlist"></div>
   <p class="note">按顺序玩时，前面的选择会带到后面。直接进入某一章时，会用那一章的预设情况。</p>
 </div>
 
 <div id="ending" class="overlay" hidden></div>
+<div id="timespage" class="overlay" hidden></div>
 
 <script>
 'use strict';
@@ -237,7 +242,7 @@ saveSet();
 /* ════════ 人物 ════════ */
 const CH={
   paul:{name:'保罗',c:'#e9cf98'}, silas:{name:'西拉',c:'#d8c49a'}, timothy:{name:'提摩太',c:'#e6d7a8'},
-  ar:{name:'亚里达古',c:'#f2b552'}, kleon:{name:'克莱翁',c:'#9fd0ea'},
+  ar:{name:'亚里达古',c:'#f2b552'}, kleon:{name:'克莱翁',c:'#9fd0ea'}, scribe:{name:'亚挪尼摩',c:'#c9b48a'},
   aquila:{name:'亚居拉',c:'#cdb88e'}, priscilla:{name:'百基拉',c:'#e0c0a0',f:1},
   kalip:{name:'加力普',c:'#f0c46a'}, jason:{name:'耶孙',c:'#d9b98a'}, uncle:{name:'狄奥多罗',c:'#c98e6a'},
   agathe:{name:'阿迦特',c:'#b9d4a0',f:1}, nikon:{name:'尼肯',c:'#c7b4e0'}, chrysis:{name:'克律西',c:'#e0b4b4',f:1},
@@ -251,6 +256,7 @@ const nm=id=>id==='me'?nm(ME()):(CH[id]?CH[id].name:id);
 /* ════════ 状态 ════════ */
 let S=null;
 function fresh(){ return {
+  times:[],
   who:'保罗', ch:0, words:['wait','affl','thief','work'], ev:['ledger','awl','bread','night','nurse'],
   flags:{}, atlas:{}, cared:{}, km:0,
   lamp:{kalip:3,nikon:3,chrysis:3,agathe:3,secundus:3,jason:3}
@@ -330,17 +336,75 @@ async function horizon(ref,text){
 async function learn(k){ if(!S.words.includes(k)) S.words.push(k); toast('得着一句话：'+CARD[k].s,'up'); await say(null,`「${CARD[k].t}」（${CARD[k].ref}）`,'letter'); }
 function gainEv(k){ if(!S.ev.includes(k)){ S.ev.push(k); toast('得着证据：'+CARD[k].s,'up'); } }
 
+/* ════════ 计时器（各段时限集中在这里；第一次试玩后按实际用时调整） ════════ */
+// 单位：秒。[轻度, 中度]
+const TIMERS={
+  stitch:[30,24],   // 缝帐棚（序章、第五章）
+  shop:[80,70],     // 昼夜做工（第二章）
+  shrine:[45,30],   // 离弃偶像（第一章）
+  sneak:[180,150],  // 夜间潜行（第三章）
+  mapLand:[90,75],  // 地图：陆路每一段
+  mapSea:[120,100], // 地图：海路每一段
+  present:[120,90], // 出示话语：辩经、对质、安慰
+  match:[150,120],  // 把问题配对到书信段落（第六章）
+  watch:[70,85]     // 守夜（第七章）
+};
+const tLimit=id=>TIMERS[id][LIGHT()?0:1];
+let TM=null;
+const fmt=s=>{ s=Math.max(0,Math.round(s)); return Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); };
+function timerStart(id,label,onExpire){
+  if(TM) timerStop();
+  TM={id,label,lim:tLimit(id),acc:0,from:performance.now(),paused:false,onExpire,fired:false};
+  $('#timer').hidden=false; tickTimer();
+}
+function timerUsed(){ return TM?(TM.acc+(TM.paused?0:(performance.now()-TM.from)))/1000:0; }
+function timerPause(){ if(TM&&!TM.paused){ TM.acc+=performance.now()-TM.from; TM.paused=true; } }
+function timerResume(){ if(TM&&TM.paused){ TM.from=performance.now(); TM.paused=false; } }
+function timerExpired(){ return !!(TM&&TM.fired); }
+function timerStop(){
+  if(!TM) return 0;
+  const used=timerUsed(), rec={ch:S?S.ch:0,seg:TM.label,used:Math.round(used),lim:TM.lim,diff:SET.diff,untimed:SET.untimed,over:!SET.untimed&&used>TM.lim};
+  if(S){ S.times=S.times||[]; S.times.push(rec); }
+  const log=jget('t1v2times')||[]; log.push(Object.assign({at:new Date().toISOString().slice(0,16).replace('T',' ')},rec)); jset('t1v2times',log.slice(-200));
+  TM=null; $('#timer').hidden=true; return used;
+}
+function tickTimer(){
+  const el=$('#timer');
+  if(TM){
+    const used=timerUsed();
+    if(SET.untimed){ el.className='up'; el.textContent='⏱ 已用 '+fmt(used); }
+    else {
+      const left=TM.lim-used; el.className=left<=10?'low':''; el.textContent=left>0?'⏱ '+fmt(left):'⏱ 时间到';
+      if(left<=0&&!TM.fired){ TM.fired=true; toast('时间到','down'); if(TM.onExpire) TM.onExpire(); }
+    }
+  }
+}
+setInterval(tickTimer,250);
+function timesText(ch){
+  const rows=(S.times||[]).filter(r=>ch===undefined||r.ch===ch);
+  return rows.map(r=>`· ${r.seg}：用了 ${fmt(r.used)}`+(r.untimed?'（不计时）':`（时限 ${fmt(r.lim)}${r.over?'，超时':''}）`)).join('\n');
+}
+function showTimes(){
+  const log=(jget('t1v2times')||[]).slice().reverse(), el=$('#timespage');
+  el.innerHTML=`<h1 style="font-size:26px">用时记录</h1><div class="sub">每一段实际用了多久（最近 200 条）</div>
+  <div class="cast"><table>${log.length?log.map(r=>`<tr><td>${CHN[r.ch]||''}<br><small style="color:var(--faint)">${r.at}</small></td><td>${r.seg}<br>用了 ${fmt(r.used)}　时限 ${fmt(r.lim)}　${r.diff==='light'?'轻度':'中度'}${r.untimed?'·不计时':''}${r.over?' · <b style="color:var(--bad)">超时</b>':''}</td></tr>`).join(''):'<tr><td colspan="2">还没有记录。</td></tr>'}</table></div>
+  <div><button class="big" id="btback">返回目录</button></div>`;
+  $('#menu').hidden=true; el.hidden=false; $('#btback').onclick=()=>{ el.hidden=true; openMenu(); };
+}
+
 /* ════════ 出示话语 ════════ */
 async function present(spec){
   const lines=spec.lines.map(l=>Object.assign({},l)); let i=0,solved=0;
   lines.forEach(l=>{ if(l.key&&!l.key.need.some(x=>spec.cards.includes(x))) l.none=true; });
   const keys=lines.filter(l=>l.key&&!l.none).length;
   if(spec.intro) await n(spec.intro);
+  timerStart('present',spec.label||'出示话语');
   while(i<lines.length){
     const L=lines[i];
     const sp=L.s||spec.who;
     show(sp?nm(sp):'',sp&&CH[sp]?CH[sp].c:'',L.t,L.key&&!L.done&&LIGHT()?'keyline':'');
-    const opts=spec.cards.map(id=>({t:'出示「'+CARD[id].s+'」',v:id,sub:CARD[id].ref,cls:'card'}));
+    const hintOn=timerExpired()&&L.key&&!L.done&&!L.none;
+    const opts=spec.cards.map(id=>({t:'出示「'+CARD[id].s+'」'+(hintOn&&L.key.need.includes(id)?'　← 提示':''),v:id,sub:CARD[id].ref,cls:'card'}));
     opts.push({t:'继续听 ▸',v:''});
     const c=AUTO?(L.key&&!L.done&&L.key.need.find(x=>spec.cards.includes(x)))||'':await choose(opts);
     if(!c){
@@ -357,6 +421,7 @@ async function present(spec){
     if(L.key&&!L.done){ await n(L.key.wrong||spec.wrong||'这句话回答不了这个问题。'); continue; }
     await n(spec.early||'话说得太早了。先听完。');
   }
+  timerStop();
   return solved;
 }
 
@@ -371,11 +436,13 @@ function stitch(count,label){
     const nz=()=>{ zx=.08+Math.random()*(.84-W); zone.style.left=(zx*100)+'%'; zone.style.width=(W*100)+'%'; };
     const upd=()=>{ $('#wst').textContent=marks.join(' ')||' '; };
     nz(); upd(); $('#winfo').textContent=(label||'缝帐棚')+'：针走到亮处时点一下（空格 / 点击）'; hint(`缝 ${count} 针。`);
+    const end=()=>{ stitchFn=null; cancelAnimationFrame(raf); timerStop(); setTimeout(()=>res(hits),500); };
+    timerStart('stitch',label||'缝帐棚',()=>{ if(!stitchFn) return; while(marks.length<count) marks.push('·'); upd(); end(); });
     const loop=t=>{ const dt=Math.min(.05,(t-last)/1000); last=t; pos+=dir*speed*dt; if(pos>1){pos=1;dir=-1;} if(pos<0){pos=0;dir=1;} needle.style.left=(pos*100)+'%'; raf=requestAnimationFrame(loop); };
     raf=requestAnimationFrame(loop);
     stitchFn=()=>{
       nst++; const ok=pos>=zx-.015&&pos<=zx+W+.015; if(ok) hits++; marks.push(ok?'✕':'·'); upd();
-      if(nst>=count){ stitchFn=null; cancelAnimationFrame(raf); setTimeout(()=>res(hits),500); } else { nz(); speed+=LIGHT()?.05:.12; }
+      if(nst>=count){ end(); } else { nz(); speed+=LIGHT()?.05:.12; }
     };
   });
 }
@@ -396,13 +463,13 @@ function shop(){
   if(AUTO) return Promise.resolve({bread:4,care:5,goal:4});
   return new Promise(res=>{
     view('shop');
-    const goal=LIGHT()?4:5, dur=LIGHT()?80:70, spawnEvery=LIGHT()?9:6, patience=LIGHT()?18:11, W=LIGHT()?.26:.18;
+    const goal=LIGHT()?4:5, dur=tLimit('shop'), spawnEvery=LIGHT()?9:6, patience=LIGHT()?18:11, W=LIGHT()?.26:.18;
     let bread=0,good=0,care=0,t=0,pos=0,dir=1,zx=.4,last=performance.now(),raf,nextSpawn=1.5,qi=0,done=false;
     const slots=[null,null,null], box=$('#visitors'); box.innerHTML='';
     for(let i=0;i<3;i++){ const d=document.createElement('div'); d.className='vis'; d.innerHTML='<span class="winfo">（空位）</span>'; box.appendChild(d); }
     const nz=()=>{ zx=.08+Math.random()*(.84-W); $('#szone').style.left=(zx*100)+'%'; $('#szone').style.width=(W*100)+'%'; };
-    nz(); $('#sGoal').textContent=goal; hint('白天缝帐棚，不叫任何人受累；有人来找你，就点他。');
-    const upd=()=>{ $('#sBread').textContent=bread; $('#sCare').textContent=care; $('#sTime').textContent=SET.untimed?'不计时':('剩 '+Math.max(0,Math.ceil(dur-t))+' 秒'); };
+    nz(); $('#sGoal').textContent=goal; timerStart('shop','昼夜做工'); hint('白天缝帐棚，不叫任何人受累；有人来找你，就点他。');
+    const upd=()=>{ $('#sBread').textContent=bread; $('#sCare').textContent=care; $('#sTime').textContent=''; };
     const render=i=>{
       const v=slots[i], d=box.children[i];
       if(!v){ d.className='vis'; d.innerHTML='<span class="winfo">（空位）</span>'; return; }
@@ -422,7 +489,7 @@ function shop(){
       if(pos>=zx-.015&&pos<=zx+W+.015){ good++; if(good%6===0){ bread++; toast('缝好一片帐棚','up'); } nz(); } else toast('针脚歪了');
       upd();
     };
-    const finish=()=>{ done=true; cancelAnimationFrame(raf); $('#shopTop').onpointerdown=null; res({bread,care,goal}); };
+    const finish=()=>{ done=true; cancelAnimationFrame(raf); $('#shopTop').onpointerdown=null; timerStop(); res({bread,care,goal}); };
     const loop=now=>{
       const dt=Math.min(.05,(now-last)/1000); last=now;
       pos+=dir*(LIGHT()?.55:.8)*dt; if(pos>1){pos=1;dir=-1;} if(pos<0){pos=0;dir=1;} $('#sneedle').style.left=(pos*100)+'%';
@@ -445,6 +512,8 @@ function shrine(){
     view('shrine'); const box=$('#v-shrine'); box.querySelectorAll('.idol').forEach(e=>e.remove());
     const items=[['行业的守护神',18],['凯撒的小像',58]]; let left=items.length;
     hint('把墙上的神像拖到下面的旧皮布里，包起来。');
+    let fin=false; const done=()=>{ if(fin) return; fin=true; timerStop(); setTimeout(res,600); };
+    timerStart('shrine','离弃偶像',()=>{ box.querySelectorAll('.idol:not(.gone)').forEach(d=>d.classList.add('gone')); toast('你把剩下的也包了起来'); done(); });
     items.forEach(([t,x],i)=>{
       const d=document.createElement('div'); d.className='idol'; d.textContent=t; d.style.left=x+'%'; d.style.top='14%'; box.appendChild(d);
       let sx,sy,ox,oy,drag=false;
@@ -453,7 +522,7 @@ function shrine(){
       d.addEventListener('pointerup',()=>{
         drag=false; const a=d.getBoundingClientRect(),b=$('#cloth').getBoundingClientRect(), pad=LIGHT()?50:10;
         const cx=a.left+a.width/2, cy=a.top+a.height/2;
-        if(cx>b.left-pad&&cx<b.right+pad&&cy>b.top-pad&&cy<b.bottom+pad){ d.classList.add('gone'); d.style.pointerEvents='none'; left--; toast('包起来了','up'); if(!left) setTimeout(res,600); }
+        if(cx>b.left-pad&&cx<b.right+pad&&cy>b.top-pad&&cy<b.bottom+pad){ d.classList.add('gone'); d.style.pointerEvents='none'; left--; toast('包起来了','up'); if(!left) done(); }
       });
     });
   });
@@ -475,6 +544,7 @@ function sneak(){
     const tickMs=LIGHT()?1050:600;
     hint('带保罗和西拉到西门。火把会移动，别被照到。\n方向键、下面的按钮，或点要去的方向。'+(SET.untimed?'不计时：你走一步，火把才走一步；按「等」原地等一等。':''));
     draw();
+    timerStart('sneak','夜间潜行',async()=>{ if(!SN) return; SN.busy=true; await n('天快亮了。西公都从巷口探出头：「跟我走，这条小路没有火把。」'); const r=SN.res; clearInterval(SN.timer); SN=null; timerStop(); r(); });
     if(!SET.untimed) SN.timer=setInterval(()=>{ if(!SN||SN.busy) return; stepPats(); draw(); check(); },tickMs);
   });
 }
@@ -489,7 +559,7 @@ async function check(){
   }
   const c=CITY[SN.pos[1]][SN.pos[0]];
   if(c==='J'&&SN.cp[0]!==CLM.J[0]){ SN.cp=[...CLM.J]; toast('到了耶孙家附近（检查点）','up'); }
-  if(c==='E'){ const r=SN.res; clearInterval(SN.timer); SN=null; r(); }
+  if(c==='E'){ const r=SN.res; clearInterval(SN.timer); SN=null; timerStop(); r(); }
 }
 function sMove(dx,dy){
   if(!SN||SN.busy) return;
@@ -657,6 +727,7 @@ function mapLeg(id,o){
     $('#mtip').textContent='用手指沿着路线描，或按住「前进」。'; $('#mtip').hidden=false;
   }
   $('#mh1').textContent=`${S.who} · ${L.name}`;
+  timerStart(sea?'mapSea':'mapLand','地图：'+L.name,()=>{ if(!SET.untimed){ delay++; toast('天色晚了，加紧赶路（多走了一天）','down'); } });
   const upd=()=>{
     const q=smp[Math.floor(p)], kmNow=q.km, day=Math.max(1,Math.ceil(kmNow/kmDay+.001)+delay);
     $('#mh2').textContent=`${Math.round(kmNow)} / ${Math.round(total)} 公里 · 约第 ${day} 天`;
@@ -674,7 +745,7 @@ function mapLeg(id,o){
   svg.onpointerdown=e=>{ e.preventDefault(); tracing=true; svg.setPointerCapture(e.pointerId); trace(e); };
   svg.onpointermove=e=>{ if(tracing) trace(e); };
   svg.onpointerup=svg.onpointercancel=()=>{ tracing=false; };
-  const finish=()=>{ if(ended) return; ended=true; cancelAnimationFrame(raf); svg.onpointerdown=svg.onpointermove=svg.onpointerup=null; ctl.innerHTML=''; $('#mtip').hidden=true; S.km+=total; resolve({km:total,days:Math.ceil(total/kmDay)+delay}); };
+  const finish=()=>{ if(ended) return; ended=true; cancelAnimationFrame(raf); svg.onpointerdown=svg.onpointermove=svg.onpointerup=null; ctl.innerHTML=''; $('#mtip').hidden=true; timerStop(); S.km+=total; resolve({km:total,days:Math.ceil(total/kmDay)+delay}); };
   const loop=async()=>{
     if(ended) return;
     if(!busy){
@@ -686,9 +757,10 @@ function mapLeg(id,o){
         if(Math.abs(off)>(LIGHT()?34:26)){ off=0; gust=0; if(!SET.untimed){ delay++; toast('被风吹偏，耽搁了一天','down'); } else toast('被风吹偏了，慢慢拉回来'); }
       }
       else if(holding) p+=LIGHT()?1.3:.9;
+      if(!sea&&timerExpired()&&!holding) p+=.6;
       p=Math.min(p,smp.length-1);
       const st=stops.find(s=>!s.done&&p>=s.idx);
-      if(st){ busy=true; holding=false; st.done=true; p=st.idx; upd(); if(st.pl) await placeCard(st.pl); if(st.ev) await st.ev(); view('map'); busy=false; }
+      if(st){ busy=true; holding=false; st.done=true; p=st.idx; upd(); timerPause(); if(st.pl) await placeCard(st.pl); if(st.ev) await st.ev(); timerResume(); view('map'); busy=false; }
       if(p>=smp.length-1&&!stops.some(s=>!s.done)){ upd(); finish(); return; }
     }
     upd(); raf=requestAnimationFrame(loop);
@@ -701,10 +773,12 @@ function watch(){
   if(AUTO) return Promise.resolve({helped:2});
   return new Promise(res=>{
     view('watch');
-    const dur=LIGHT()?70:85, rate=SET.untimed?.5:1;
+    const dur=tLimit('watch'), rate=SET.untimed?.5:1, sc=dur/70;
     let oil=.8,sleepy=.1,t=0,last=performance.now(),raf,pray=false,helm=false,wisp=0,wispOn=false,door=null,helped=0,graced=false,paused=false;
     const events=[[6,'need','急促的敲门声：「亚里达古！邻居的孩子烧得厉害，你能来帮忙抬水吗？」'],[16,'revel','门外有人喊：「平安稳妥！出来喝一杯！今晚谁不醉，就是不给总督面子！」'],[22,'wisp'],[30,'need','轻轻的敲门声：「是我，西公都。我睡不着，可以进来一起守夜吗？」'],[42,'wisp'],[50,'revel','醉汉拍着门：「出来！总督明天就到，全城都在庆祝！」'],[58,'need','敲门声：「我是克律西。我想起加力普……我不想一个人。」'],[64,'wisp']];
+    events.forEach(e=>e[0]*=sc);
     let ei=0;
+    timerStart('watch','守夜');
     const bp=$('#bPray'),bw=$('#bWake'),bh=$('#bHelm'),dr=$('#wdoor');
     const hold=(b,set)=>{ b.onpointerdown=e=>{ e.preventDefault(); set(true); b.classList.add('held'); }; b.onpointerup=b.onpointerleave=b.onpointercancel=()=>{ set(false); b.classList.remove('held'); }; };
     hold(bp,x=>pray=x); hold(bh,x=>helm=x);
@@ -731,8 +805,8 @@ function watch(){
       }
       $('#wOil').style.width=(oil*100)+'%'; $('#wSleep').style.width=(sleepy*100)+'%'; $('#wWisp').style.width=(wisp*100)+'%';
       $('#wflame').style.transform=`scale(${.4+oil*.8})`; $('#wflame').style.opacity=oil>0?1:.15;
-      $('#wTime').textContent=SET.untimed?'':'离天亮还有 '+Math.max(0,Math.ceil(dur-t))+' 息';
-      if(t>=dur&&ei>=events.length&&!door&&!wispOn){ cancelAnimationFrame(raf); [bp,bh].forEach(b=>b.onpointerdown=null); bw.onclick=dr.onclick=null; res({helped}); return; }
+      $('#wTime').textContent='';
+      if(t>=dur&&ei>=events.length&&!door&&!wispOn){ cancelAnimationFrame(raf); [bp,bh].forEach(b=>b.onpointerdown=null); bw.onclick=dr.onclick=null; timerStop(); res({helped}); return; }
       raf=requestAnimationFrame(loop);
     };
     raf=requestAnimationFrame(loop);
@@ -757,7 +831,9 @@ async function ch0(){
   await n('保罗放下针，很久没有说话。');
   await v('帖前 3:7-8','所以弟兄们，我们在一切困苦患难之中，因着你们的信心就得了安慰。你们若靠主站立得稳，我们就活了。');
   await s('timothy','可是……他们也有问题。（他打开一个皮袋）有人睡了，他们问：睡了的人怎么办？主的日子到底什么时候来？还有人干脆不做工了……');
-  await s('paul','拿笔来。西拉，你来写。');
+  await n('一位替人抄写的弟兄坐到桌边，摊开皮纸。他叫亚挪尼摩——希腊话 Ἀνώνυμος，意思是「无名的人」。');
+  await s('paul','亚挪尼摩，拿笔来。我说，你写。');
+  await s('scribe','（他蘸了蘸墨）请说。');
   await v('帖前 1:1','保罗、西拉、提摩太写信给帖撒罗尼迦在父神与主耶稣基督里的教会。愿恩惠、平安归与你们！');
   await overview(['corinth','athens','thess','philippi','berea'],['l5'],'这封信要从哥林多出发，走五百多公里，到帖撒罗尼迦。');
   await s('paul','要说他们的事，得从头说起。从腓立比说起。');
@@ -973,7 +1049,7 @@ async function ch5(){
 async function ch6(){
   S.ch=6; setWho('保罗');
   place('哥林多','口述书信');
-  await s('paul','西拉，接着写。前面的话写完了，现在回答他们的问题。');
+  await s('paul','亚挪尼摩，接着写。前面的话写完了，现在回答他们的问题。');
   await n('（把皮袋里的每个问题，配到信里回答它的那一段。）');
   const Qs=[
     {k:'holy',q:'「旧日的情欲，怎样胜过？」',p:'4:3-8',ref:'帖前 4:3、7-8',t:'神的旨意就是要你们成为圣洁，远避淫行……神召我们，本不是要我们沾染污秽，乃是要我们成为圣洁。所以，那弃绝的，不是弃绝人，乃是弃绝那赐圣灵给你们的神。'},
@@ -983,13 +1059,15 @@ async function ch6(){
   ];
   const paras=[['4:3-8','成为圣洁'],['4:9-12','弟兄相爱，亲手做工'],['4:13-18','论到睡了的人'],['5:1-11','论到时候、日期']];
   const done={};
+  timerStart('match','配对书信段落');
   while(Object.keys(done).length<Qs.length){
     const q=await choose(Qs.filter(x=>!done[x.k]).map(x=>({t:x.q,v:x.k})),'从皮袋里拿出一个问题：');
     const item=Qs.find(x=>x.k===q);
-    const p=AUTO?item.p:await choose(paras.map(([r,t])=>({t:`${r}　${t}`,v:r})),`${item.q}——信里哪一段回答它？`);
+    const p=AUTO?item.p:await choose(paras.map(([r,t])=>({t:`${r}　${t}`+(timerExpired()&&r===item.p?'　← 提示':''),v:r})),`${item.q}——信里哪一段回答它？`);
     if(p===item.p){ done[q]=1; await v(item.ref,item.t); }
     else await n('不是这一段。再想想。');
   }
+  timerStop();
   await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
   await v('帖前 5:27','我指着主嘱咐你们，要把这信念给众弟兄听。');
   await s('paul','克莱翁，你替我把它送去。');
@@ -1002,7 +1080,7 @@ async function ch6(){
     const season=await choose([{t:'现在是夏天',v:'s',sub:'航海的好季节'},{t:'现在是深秋',v:'a',sub:'快封海了，风浪大'}],'现在是什么季节？');
     storm=season==='a';
     if(storm) await n('船长说：「再过几个礼拜就封海了。这是今年最后几班船。」');
-    await mapLeg('l6s',{storm,stops:[{pl:'cenchreae'},{pl:'sounion'},{at:[24.8,38.6],ev:async()=>{ if(storm){ await n('一场大风暴。船在浪里颠了两天两夜。'); await n('你抱着那卷信，想起保罗说过的：「三次遇着船坏」。'); } else await n('海上风平浪静。'); }},{pl:'skiathos'},{pl:'thess'}]});
+    await mapLeg('l6s',{storm,stops:[{pl:'cenchreae'},{pl:'sounion'},{at:[24.8,38.6],ev:async()=>{ if(storm){ await n('一场大风暴。船在浪里颠了两天两夜。'); await n('你抱着那卷信，心想：保罗走过这么多海路，他是怎样撑过来的？'); } else await n('海上风平浪静。'); }},{pl:'skiathos'},{pl:'thess'}]});
   } else {
     await mapLeg('l6l',{stops:[{pl:'isthmus'},{pl:'thebes'},{pl:'thermopylae',ev:async()=>{ await n('山路上冲出几个强盗，搜走了你的钱袋。'); await n('他们抖开油布，看了一眼：「一卷皮子？」随手扔回给你。'); await n('强盗只要钱，不要一封信。'); }},{pl:'larissa'},{pl:'tempe',ev:async()=>{ await n('彼纽斯河涨水了。你在河边等了一天，才找到渡船。'); }},{pl:'thess'}]});
   }
@@ -1096,6 +1174,7 @@ async function startAt(i){
     await CHAPTERS[k].f();
     const done=jget('t1v2done')||{}; done[k]=1; jset('t1v2done',done);
     S.next=k+1; saveRun();
+    const tt=timesText(k); if(tt) await say(null,'这一章各段的用时：\n'+tt,'letter');
     if(k===CHAPTERS.length-1) break;
     const c=await choose([{t:'下一章：'+CHN[k+1],v:1},{t:'回到目录',v:0}],`${CHN[k]}　完`);
     if(!c){ openMenu(); return; }
@@ -1116,7 +1195,7 @@ function ending(){
   el.hidden=false; $('#bagain').onclick=openMenu;
 }
 document.addEventListener('keydown',e=>{
-  if(!$('#title').hidden||!$('#castpage').hidden||!$('#menu').hidden||!$('#ending').hidden) return;
+  if(!$('#title').hidden||!$('#castpage').hidden||!$('#menu').hidden||!$('#ending').hidden||!$('#timespage').hidden) return;
   if(stitchFn&&(e.code==='Space'||e.key==='Enter')){ e.preventDefault(); stitchFn(); return; }
   if(choosing){ const k=parseInt(e.key,10); if(k>=1&&k<=9){ const b=D.ch.querySelectorAll('button')[k-1]; if(b&&!b.disabled) b.click(); } return; }
   if(SN&&!SN.busy){ const m={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[e.code]; if(m){ e.preventDefault(); sMove(m[0],m[1]); return; } }
@@ -1126,6 +1205,7 @@ window.addEventListener('resize',()=>{ if(SN) draw(); });
 $('#bmenu').onclick=()=>{ if(confirm('回到目录？这一章的进度会从头开始。')) { location.hash='menu'; location.reload(); } };
 $('#bstart').onclick=()=>{ $('#title').hidden=true; $('#castpage').hidden=false; };
 $('#bcast').onclick=openMenu;
+$('#btimes').onclick=showTimes;
 if(location.hash==='#menu'){ history.replaceState(null,'',location.pathname+location.search); openMenu(); }
 </script>
 </body>
