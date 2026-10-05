@@ -48,6 +48,20 @@ button:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
 .bar.spirit b{background:var(--lamp)}
 .bar.spirit.locked{opacity:.4}
 #treeBtn{background:none;border:0;padding:0;width:74px;flex:none}
+#menuBtn{flex:none;display:grid;justify-items:center;gap:0;background:var(--night-2);border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:18px;line-height:1.1;color:var(--text)}
+#menuBtn span{font-size:10px;color:var(--muted)}
+#exitPanel{position:fixed;inset:0;background:rgba(10,13,22,.8);display:grid;place-items:center;z-index:11;padding:16px}
+#exitPanel .box{background:var(--night-2);border:1px solid var(--line);border-radius:10px;padding:18px;max-width:420px;width:100%;display:grid;gap:12px}
+.chap{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:10px;background:var(--night-2)}
+.chap header{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.chap h3{margin:0;font-family:var(--display);font-weight:400;font-size:20px;color:var(--lamp)}
+.chap header span{font-size:12px;color:var(--muted)}
+.chap.done h3::after{content:" ✓";color:var(--leaf);font-family:var(--sans);font-size:15px}
+.seg{display:grid;grid-template-columns:1.4em 1fr;gap:2px 6px;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:14.5px}
+.seg:hover{border-color:#51607f}
+.seg i{font-style:normal;color:var(--muted);grid-row:span 2}
+.seg.seen i{color:var(--leaf)}
+.seg small{grid-column:2;color:var(--lamp-dim);font-size:12px}
 #treeBtn svg{display:block;width:100%;height:auto}
 #burdens{display:flex;gap:4px;flex-wrap:wrap;font-size:11px}
 #burdens span{background:var(--earth);color:var(--text);padding:0 6px;border-radius:3px}
@@ -164,6 +178,7 @@ ol.q{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:14.5px}
 <body>
 <div id="app">
   <header id="hud">
+    <button id="menuBtn" aria-label="回到目录">☰<span>目录</span></button>
     <div class="where">
       <div class="act" id="actName">以巴弗提的旅程</div>
       <div class="sub" id="actSub">腓立比书 · 四章</div>
@@ -181,6 +196,13 @@ ol.q{margin:0;padding-left:1.4em;display:grid;gap:6px;font-size:14.5px}
     <button id="fightBtn" hidden>⚔ 争战</button>
     <button id="waitBtn" class="locked" aria-label="长按等候">🕊 等候</button>
   </footer>
+</div>
+<div id="exitPanel" hidden>
+  <div class="box">
+    <h2>回到目录？</h2>
+    <p class="story">你的进度已经存好。下次会从<b>这一段的开头</b>接着玩，也可以从目录进入任何一段。</p>
+    <div class="row"><button class="btn" id="exitYes">回到目录</button><button class="btn ghost" id="exitNo">继续玩</button></div>
+  </div>
 </div>
 <div id="fruitPanel" hidden>
   <div class="box">
@@ -201,6 +223,13 @@ const S={
   roots:0, obey:0, flesh:0, waitSec:0,
   burdens:[], dropped:0, thoughts:new Set(), kills:0, infect:0, oil:0, supplyGot:0, peace:0, received:0, peaceBroken:0
 };
+const INIT=JSON.stringify({...S,thoughts:[]});
+const SAVE_KEY='epaphroditus-journey-v1';
+let VISITED=new Set();
+function loadSave(){ try{ return JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); }catch(e){ return null; } }
+function save(seg){ VISITED.add(seg);
+  try{ localStorage.setItem(SAVE_KEY,JSON.stringify({seg,visited:[...VISITED],S:{...S,thoughts:[...S.thoughts],waiting:false}})); }catch(e){} }
+function restore(d){ Object.assign(S,JSON.parse(INIT),d&&d.S||{},{thoughts:new Set(d&&d.S&&d.S.thoughts||[]),waiting:false}); }
 const C={lamp:'#f2c14e',leaf:'#86ad6f',germ:'#b95fa3',fever:'#e0645a',text:'#ebe5d6',muted:'#a6a99f',earth:'#6b5a45',night:'#111726',night2:'#1a2235',line:'#34405a'};
 const $=s=>document.querySelector(s);
 const FONT=getComputedStyle(document.body).fontFamily;
@@ -257,6 +286,7 @@ waitBtn.addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('keydown',e=>{ if(e.code==='Space'){e.preventDefault();if(!e.repeat)setWaiting(true)} });
 addEventListener('keyup',e=>{ if(e.code==='Space'){e.preventDefault();setWaiting(false)} });
 function unlockSpirit(){ S.unlocked=true; waitBtn.classList.remove('locked'); S.spirit=Math.max(S.spirit,20); hud(); }
+function syncWait(){ waitBtn.classList.toggle('locked',!S.unlocked); hud(); }
 
 /* ================= 场景管理与主循环 ================= */
 let cleanup=null, sceneTick=null, decay=true;
@@ -545,23 +575,44 @@ function journey(mode,idx,next){
 
 /* ================= 开场 ================= */
 function title(){
-  setAct('以巴弗提的旅程','腓立比书 · 一个关于喜乐的旅程');
+  setAct('目录','以巴弗提的旅程');
+  setWaiting(false); $('#burdens').innerHTML='';
+  const d=loadSave(); if(d&&d.visited) VISITED=new Set(d.visited);
+  const last=d&&SEG[d.seg];
   go(()=>{
     const w=page(`
       <div class="eyebrow">腓立比书 · 圣经游戏</div>
       <h1>以巴弗提的旅程</h1>
-      <div class="story"><p>主后约 61 年。腓立比教会差派以巴弗提，带着馈送，走一千多公里路去罗马，探望被锁着的保罗。</p></div>
-      ${V('我已经从以巴弗提受了你们的馈送，当作极美的香气，为神所收纳、所喜悦的祭物。','腓立比书 4:18')}
-      <div class="story" style="display:grid;gap:10px">
-        <p>这一路上，<b style="color:#e2a6d2">结党、嫉妒、纷争、怨言</b>像病菌一样一波一波迎面而来。躲不过，只能争战；可是每打一仗，身上也会沾染一些。</p>
-        <p>这个游戏不比谁手快。它问的是：你有多愿意停下来，向圣灵敞开，让祂在你里面工作。</p>
+      <div class="story"><p>主后约 61 年。腓立比教会差派以巴弗提，带着馈送，走一千多公里路去罗马，探望被锁着的保罗，再带着保罗的信回家。</p></div>
+      <div class="row">
+        ${last?`<button class="btn" id="cont">继续上次：${last.n}</button>`:''}
+        <button class="btn ${last?'ghost':''}" id="fresh">从头开始</button>
+        <button class="btn ghost" id="notes">研经说明</button>
       </div>
-      <div class="row"><button class="btn" id="go">出发</button><button class="btn ghost" id="notes">研经说明</button></div>
-      <div class="note">全程约 20 分钟，适合个人或小组。手机拖动操作；电脑可用方向键和空格键。</div>`);
-    w.querySelector('#go').onclick=prologue;
+      <p class="note">每一段都可以单独玩，旁边写着要读的经文：可以先玩一段，再一起读经。第一次玩，建议从序幕开始。进度只存在这个浏览器里。</p>
+      ${CHAPTERS.map(c=>`<section class="chap ${c.segs.every(x=>VISITED.has(x.id))?'done':''}">
+        <header><h3>${c.t}</h3><span>${c.min}</span></header>
+        ${c.segs.map(x=>`<button class="seg ${VISITED.has(x.id)?'seen':''}" data-seg="${x.id}"><i>${VISITED.has(x.id)?'✓':'○'}</i>${x.n}<small>读经：${x.read}</small></button>`).join('')}
+      </section>`).join('')}`);
+    if(last) w.querySelector('#cont').onclick=()=>{ restore(d); syncWait(); last.run(); };
+    w.querySelector('#fresh').onclick=()=>{ restore(null); syncWait(); SEG.p1.run(); };
     w.querySelector('#notes').onclick=notes;
+    w.querySelectorAll('[data-seg]').forEach(b=>b.onclick=()=>jump(b.dataset.seg));
   });
 }
+/* 从目录跳进任何一段：沿用存下来的累积状态，再补上这一段需要的前提 */
+function jump(id){
+  const x=SEG[id]; restore(loadSave());
+  if(x.prep) x.prep();
+  const before=S.unlocked;
+  if(x.ch>0||id==='p4'){ if(!S.unlocked) unlockSpirit(); }
+  syncWait(); x.run();
+  if(!before&&S.unlocked&&id!=='p4') toast('🕊 长按「等候」（电脑按住空格键）安静祷告，圣灵的光会亮起来。',4200);
+}
+function askExit(){ if($('#exitPanel').hidden===false) return; setWaiting(false); $('#exitPanel').hidden=false; }
+$('#menuBtn').onclick=askExit;
+$('#exitNo').onclick=()=>{ $('#exitPanel').hidden=true; };
+$('#exitYes').onclick=()=>{ $('#exitPanel').hidden=true; title(); };
 function notes(){
   story({eyebrow:'研经说明',title:'游戏背后的经文判断',
     paras:[
@@ -815,13 +866,13 @@ function act2(){
     verses:[['你们当以基督耶稣的心为心：他本有神的形像，不以自己与神同等为强夺的；反倒虚己，取了奴仆的形像，成为人的样式；既有人的样子，就自己卑微，存心顺服，以至于死，且死在十字架上。','腓立比书 2:5-8'],['他本来富足，却为你们成了贫穷，叫你们因他的贫穷可以成为富足。','哥林多后书 8:9'],['况且我们的软弱有圣灵帮助，我们本不晓得当怎样祷告，只是圣灵亲自用说不出来的叹息替我们祷告。','罗马书 8:26']],
     btn:'选择你的角色',next:pickRole});
 }
-function pickRole(){
+function pickRole(next=0){
   setAct('第二章 · 基督的心','你是谁？');
   go(()=>{
     const w=page(`<div class="eyebrow">第二章 · 开始之前</div><h2>你是谁？</h2>
       <div class="story"><p>同一道阶梯，每一代看见的处境都不一样。选一个最接近你的角色。</p></div>
       <div class="opts">${ROLES.map(r=>`<button class="opt" data-r="${r.id}"><span class="tag">${r.d}</span>${r.n}</button>`).join('')}</div>`);
-    w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ S.role=b.dataset.r; stair(0); });
+    w.querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{ S.role=b.dataset.r; stair(next); });
   });
 }
 function stairsSVG(k){
@@ -1285,10 +1336,10 @@ function ending(){
           <li><b>回程：</b>你的平安最常被什么打穿？你从圣灵那里领受过什么，使它更新？</li>
           <li><b>未完：</b>如果你是友阿爹或循都基，听到自己的名字被读出来，你会怎样回应？</li>
         </ol>
-        <div class="row"><button class="btn" id="again">再走一次</button><button class="btn ghost" id="nt">研经说明</button></div>
+        <div class="row"><button class="btn" id="again">回到目录</button><button class="btn ghost" id="nt">研经说明</button></div>
         </div>`;
       lifeTree(rest);
-      rest.querySelector('#again').onclick=()=>location.reload();
+      rest.querySelector('#again').onclick=title;
       rest.querySelector('#nt').onclick=()=>story({eyebrow:'研经说明',title:'游戏背后的经文判断',paras:[
         '1:15-17 的嫉妒纷争传道发生在罗马；同样的「结党」（ἐριθεία，1:17；2:3）也在腓立比教会里发作。',
         '以巴弗提的病因经文没有交代，「病菌」是属灵寓意。',
@@ -1302,6 +1353,40 @@ function ending(){
 }
 
 /* ================= 启动 ================= */
+/* ================= 目录与存档 ================= */
+const CHAPTERS=[
+  {t:'序幕 · 去程',min:'约 6 分钟',segs:[
+    {id:'p1',n:'出发：教会不同心',read:'腓 4:2；1:27',run:()=>prologue()},
+    {id:'p2',n:'帖撒罗尼迦：外面的敌对',read:'腓 1:27-30',prep:()=>{S.burdens=['馈送的重托','不同心']; S.sick=Math.max(S.sick,20);},run:()=>out2()},
+    {id:'p3',n:'布林迪西：忧虑成病',read:'腓 2:25-27',prep:()=>{S.burdens=['馈送的重托','不同心','敌对']; S.sick=Math.max(S.sick,45);},run:()=>out3()},
+    {id:'p4',n:'然而神怜恤他',read:'腓 2:25-30',prep:()=>{ if(!S.arriveSick) S.arriveSick=90; },run:()=>mercy()}]},
+  {t:'第一章 · 罗马',min:'约 5 分钟',segs:[
+    {id:'c1',n:'捆锁中的喜乐',read:'腓 1:12-21',run:()=>act1()},
+    ...ROME.map((r,i)=>({id:'r'+(i+1),n:`处境 ${i+1} · ${r.title}`,read:['腓 1:12-14','腓 1:15-18','腓 1:19-26','腓 1:27-30','腓 1:3-11'][i],run:()=>romeCard(i)}))]},
+  {t:'第二章 · 代赎的阶梯',min:'约 7 分钟',segs:[
+    {id:'c2',n:'祂一级一级降下来',read:'腓 2:5-8；林后 8:9',run:()=>act2()},
+    ...STEPS.map((st,k)=>({id:'s'+(k+1),n:`第 ${k+1} 级 · ${st.field}`,read:`腓 2:6-8「${st.ph}」`,run:()=>S.role?stair(k):pickRole(k)})),
+    {id:'s10',n:'十字架与高举',read:'腓 2:9-13',run:()=>cross()}]},
+  {t:'第三章 · 标竿',min:'约 3 分钟',segs:[
+    {id:'c3',n:'向着标竿直跑',read:'腓 3:3-14',run:()=>act3()}]},
+  {t:'第四章 · 回程',min:'约 7 分钟',segs:[
+    {id:'b1',n:'同一条路，不同的人',read:'腓 2:25-28；4:6-7',run:()=>returnStart()},
+    {id:'b2',n:'敌对与天上的国民',read:'腓 3:17-21',prep:()=>{S.burdens=['敌对','不同心']; if(!S.peace) S.peace=70;},run:()=>back2()},
+    {id:'b3',n:'进城之前：思念',read:'腓 4:8-9',prep:()=>{ if(!S.burdens.includes('不同心')) S.burdens=['不同心']; if(!S.peace) S.peace=70;},run:()=>meditate()},
+    {id:'b4',n:'回到腓立比',read:'腓 4:2-5',prep:()=>{ if(!S.burdens.includes('不同心')) S.burdens=['不同心'];},run:()=>arrive()}]},
+  {t:'终章 · 未完',min:'约 3 分钟',segs:[
+    {id:'e1',n:'信还没有读完 · 生命树',read:'腓 1:3-6；4:2',run:()=>ending()}]}
+];
+const SEG={}; CHAPTERS.forEach((c,ci)=>c.segs.forEach(x=>{ x.ch=ci; SEG[x.id]=x; }));
+/* 每一段开始时自动存档（检查点）。正常往下玩、从目录进入、继续上次，都经过这里。 */
+const track=(idf,f)=>function(...a){ const id=typeof idf==='function'?idf(...a):idf; if(id) save(id); return f.apply(this,a); };
+prologue=track('p1',prologue); out2=track('p2',out2); out3=track('p3',out3); mercy=track('p4',mercy);
+act1=track('c1',act1); romeCard=track(i=>i<ROME.length?'r'+(i+1):null,romeCard);
+act2=track('c2',act2); stair=track(k=>k<STEPS.length?'s'+(k+1):null,stair); cross=track('s10',cross);
+act3=track('c3',act3);
+returnStart=track('b1',returnStart); back2=track('b2',back2); meditate=track('b3',meditate); arrive=track('b4',arrive);
+ending=track('e1',ending);
+
 hud(); title(); requestAnimationFrame(loop);
 </script>
 </body>
