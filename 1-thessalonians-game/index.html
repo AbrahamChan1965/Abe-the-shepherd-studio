@@ -115,6 +115,23 @@ button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px
 #wbtns{grid-column:1/3;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
 #wbtns button{font:inherit;font-size:15px;background:#211910;color:var(--ink);border:1px solid #7a6236;border-radius:26px;padding:12px 16px;min-height:52px;cursor:pointer;touch-action:none}
 #wbtns button.held{background:#7a6236}
+/* 手牌 */
+#hand{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 8px;-webkit-overflow-scrolling:touch}
+.hcard{flex:0 0 auto;width:138px;min-height:92px;font:inherit;font-size:14px;line-height:1.45;text-align:left;border:1px solid #5b7f94;background:#17212a;color:var(--ink);border-radius:10px;padding:8px 9px;cursor:pointer}
+.hcard b{display:block;color:#9fd0ea;font-size:15px;margin-bottom:3px}
+.hcard small{color:var(--dim);font-size:12px}
+.hcard.hint{box-shadow:0 0 0 3px var(--amber)}
+#handrow{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px}
+#trust{color:var(--dim);font-size:14px;letter-spacing:.1em}
+#trust b{color:#e0b4b4}
+/* 祷告 */
+#v-pray{padding:14px;background:radial-gradient(ellipse at 50% 30%,#2a2030,#0d0a07 70%)}
+#plist{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:640px;margin:0 auto}
+.pcard{position:relative;font:inherit;font-size:16px;min-height:96px;border:1px solid #6b5a80;background:#1a1522;color:var(--ink);border-radius:12px;cursor:pointer;touch-action:none;overflow:hidden}
+.pcard i{position:absolute;left:0;bottom:0;height:6px;background:var(--amber);width:0}
+.pcard.done{border-color:var(--amber);background:#2a2014}
+.pcard small{display:block;color:var(--dim);font-size:12px;margin-top:4px}
+@media (max-width:560px){#plist{grid-template-columns:repeat(2,1fr)}.hcard{width:108px;font-size:13px}.hcard b{font-size:14px}}
 /* 浮层 */
 .overlay{position:fixed;inset:0;background:radial-gradient(ellipse at 50% 40%,#2a1c0c,#0b0806 65%);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;text-align:center;padding:28px 16px;z-index:30;overflow:auto}
 .overlay[hidden]{display:none}
@@ -162,6 +179,7 @@ button.ch small{display:block;color:var(--dim);font-size:12.5px;margin-left:18px
     </section>
     <section id="v-shrine" class="view"><div id="cloth">旧皮布</div></section>
     <section id="v-sneak" class="view"><canvas id="scan"></canvas><div id="dpad"><button class="u" data-d="0,-1">↑</button><button class="l" data-d="-1,0">←</button><button class="r" data-d="1,0">→</button><button class="d" data-d="0,1">↓</button><button class="w" data-d="0,0" title="原地等一等">等</button></div></section>
+    <section id="v-pray" class="view"><div id="plist"></div></section>
     <section id="v-watch" class="view"><div id="wroom">
       <div id="wlampbox"><div id="wflame"></div><div class="winfo">油</div><div class="meter"><i id="wOil" style="background:#e2b45a"></i></div><div class="winfo">睡意</div><div class="meter"><i id="wSleep" style="background:#8a7bb0"></i></div><div class="winfo" id="wTime"></div></div>
       <div id="wside"><div id="wdoor">门外很安静。</div><div class="winfo">暗处的声音</div><div id="wwisp"><i id="wWisp"></i></div></div>
@@ -234,7 +252,7 @@ GEO.rivers.Axios=[[[22.73,40.53],[22.66,40.66],[22.58,40.85],[22.53,41.05],[22.4
 GEO.rivers.Peneus=[[[22.70,39.93],[22.59,39.89],[22.50,39.75],[22.42,39.64],[22.20,39.58],[21.9,39.55]]];
 
 /* ════════ 设置 ════════ */
-const SET=Object.assign({diff:'light',untimed:false,big:false},jget('t1v2set')||{});
+const SET=Object.assign({diff:'light',untimed:false,big:false,tts:false},jget('t1v2set')||{});
 function saveSet(){ jset('t1v2set',SET); document.body.classList.toggle('big',SET.big); }
 const LIGHT=()=>SET.diff==='light';
 saveSet();
@@ -256,7 +274,7 @@ const nm=id=>id==='me'?nm(ME()):(CH[id]?CH[id].name:id);
 /* ════════ 状态 ════════ */
 let S=null;
 function fresh(){ return {
-  times:[],
+  times:[], geo:{ok:0,total:0}, prayed:{}, missteps:0, cp:0, resume:0, inProgress:false,
   who:'保罗', ch:0, words:['wait','affl','thief','work'], ev:['ledger','awl','bread','night','nurse'],
   flags:{}, atlas:{}, cared:{}, km:0,
   lamp:{kalip:3,nikon:3,chrysis:3,agathe:3,secundus:3,jason:3}
@@ -304,7 +322,15 @@ function type(text){
   const iv=setInterval(()=>{ i+=2; D.text.textContent=text.slice(0,i); if(i>=text.length){ clearInterval(iv); typing=null; } },18);
   typing={stop(){ clearInterval(iv); D.text.textContent=text; typing=null; }};
 }
-function show(label,color,text,cls){ D.box.className=cls||''; D.name.textContent=label||''; D.name.style.color=color||''; D.ch.innerHTML=''; D.next.hidden=false; type(text); D.box.scrollTop=0; }
+function show(label,color,text,cls){ D.box.className=cls||''; D.name.textContent=label||''; D.name.style.color=color||''; D.ch.innerHTML=''; D.next.hidden=false; type(text); D.box.scrollTop=0; if(cls!=='hint') speak(text); }
+/* 朗读：用平板或电脑内建的中文语音 */
+const TTS={ok:typeof speechSynthesis!=='undefined',v:null};
+function pickVoice(){ try{ const vs=speechSynthesis.getVoices(); TTS.v=vs.find(v=>/zh[-_]CN/i.test(v.lang))||vs.find(v=>/^zh/i.test(v.lang))||null; }catch(e){} }
+if(TTS.ok){ pickVoice(); speechSynthesis.onvoiceschanged=pickVoice; }
+function speak(text){
+  if(!SET.tts||!TTS.ok||FAST||AUTO||!text) return;
+  try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text.replace(/（[^）]*）/g,'').replace(/[「」『』]/g,'')); u.lang='zh-CN'; if(TTS.v) u.voice=TTS.v; u.rate=LIGHT()?.9:1; speechSynthesis.speak(u); }catch(e){}
+}
 function advance(){ if(choosing) return; if(typing){ typing.stop(); return; } if(adv){ const r=adv; adv=null; r(); } }
 D.box.addEventListener('click',advance);
 const waitAdv=()=>new Promise(r=>adv=r);
@@ -347,7 +373,9 @@ const TIMERS={
   mapSea:[120,100], // 地图：海路每一段
   present:[120,90], // 出示话语：辩经、对质、安慰
   match:[150,120],  // 把问题配对到书信段落（第六章）
-  watch:[70,85]     // 守夜（第七章）
+  watch:[70,85],    // 守夜（第七章）
+  find:[30,20],     // 认地方（每次）
+  pray:[60,45]      // 保罗的祷告（第四章）
 };
 const tLimit=id=>TIMERS[id][LIGHT()?0:1];
 let TM=null;
@@ -393,20 +421,52 @@ function showTimes(){
 }
 
 /* ════════ 出示话语 ════════ */
+const shuffle=a=>{ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+/* 手牌：一行卡片 + 「继续听」 */
+function chooseHand(hand,hintIds,trustTxt){
+  return new Promise(res=>{
+    if(typing) typing.stop();
+    D.next.hidden=true; choosing=true; D.ch.innerHTML='';
+    const row=document.createElement('div'); row.id='hand';
+    hand.forEach(id=>{ const b=document.createElement('button'); b.className='hcard'+(hintIds.includes(id)?' hint':''); b.innerHTML=`<b>${CARD[id].s}</b><small>${CARD[id].ref}</small>`; b.title=CARD[id].t;
+      b.addEventListener('click',e=>{ e.stopPropagation(); choosing=false; D.ch.innerHTML=''; res(id); }); row.appendChild(b); });
+    const r2=document.createElement('div'); r2.id='handrow';
+    r2.innerHTML=`<span id="trust">${trustTxt}</span>`;
+    const go=document.createElement('button'); go.className='ch'; go.style.minWidth='9em'; go.textContent='继续听 ▸';
+    go.addEventListener('click',e=>{ e.stopPropagation(); choosing=false; D.ch.innerHTML=''; res(''); });
+    r2.appendChild(go); D.ch.appendChild(row); D.ch.appendChild(r2);
+  });
+}
 async function present(spec){
   const lines=spec.lines.map(l=>Object.assign({},l)); let i=0,solved=0;
   lines.forEach(l=>{ if(l.key&&!l.key.need.some(x=>spec.cards.includes(x))) l.none=true; });
   const keys=lines.filter(l=>l.key&&!l.none).length;
+  // 手里只拿几张：答案 + 一两张别的，次序打乱
+  const correct=[]; lines.forEach(l=>{ if(l.key&&!l.none){ const c=l.key.need.find(x=>spec.cards.includes(x)); if(c&&!correct.includes(c)) correct.push(c); } });
+  const extra=shuffle(spec.cards.filter(c=>!correct.includes(c)));
+  const want=Math.min(spec.cards.length,Math.max(correct.length+(LIGHT()?1:2),spec.lack?4:3));
+  const hand=shuffle(spec.lack?extra.slice(0,4):[...correct,...extra.slice(0,Math.max(0,want-correct.length))]);
+  const maxT=LIGHT()?3:2; let trust=maxT;
+  const who=spec.who?nm(spec.who):'对方';
+  const tTxt=()=>spec.lack?'':`${who}的心门：<b>${'●'.repeat(trust)}</b>${'○'.repeat(maxT-trust)}`;
   if(spec.intro) await n(spec.intro);
   timerStart('present',spec.label||'出示话语');
+  const cost=async msg=>{
+    if(spec.lack){ await n(msg); return false; }
+    trust--; S.missteps=(S.missteps||0)+1; await n(msg+'\n'+who+'的神情冷了一点。');
+    if(trust<=0){
+      await n(`${who}不愿意再听下去了。`);
+      await choose([{t:'再试一次（从头好好听）',v:1}]);
+      trust=maxT; i=0; return true;
+    }
+    return false;
+  };
   while(i<lines.length){
     const L=lines[i];
     const sp=L.s||spec.who;
     show(sp?nm(sp):'',sp&&CH[sp]?CH[sp].c:'',L.t,L.key&&!L.done&&LIGHT()?'keyline':'');
-    const hintOn=timerExpired()&&L.key&&!L.done&&!L.none;
-    const opts=spec.cards.map(id=>({t:'出示「'+CARD[id].s+'」'+(hintOn&&L.key.need.includes(id)?'　← 提示':''),v:id,sub:CARD[id].ref,cls:'card'}));
-    opts.push({t:'继续听 ▸',v:''});
-    const c=AUTO?(L.key&&!L.done&&L.key.need.find(x=>spec.cards.includes(x)))||'':await choose(opts);
+    const hintIds=timerExpired()&&L.key&&!L.done&&!L.none?L.key.need:[];
+    const c=AUTO?(L.key&&!L.done&&L.key.need.find(x=>hand.includes(x)))||'':await chooseHand(hand,hintIds,tTxt());
     if(!c){
       if(L.none&&!L.told){ L.told=true; await n(L.key.wrong||'你手里没有能回答这句话的话。'); }
       i++;
@@ -415,11 +475,11 @@ async function present(spec){
     }
     if(L.key&&!L.done&&L.key.need.includes(c)){
       await say('me','「'+CARD[c].t+'」');
-      for(const [a,t] of L.key.ok) await say(a,t);
+      for(const [a,tx] of L.key.ok) await say(a,tx);
       L.done=true; solved++; i++; continue;
     }
-    if(L.key&&!L.done){ await n(L.key.wrong||spec.wrong||'这句话回答不了这个问题。'); continue; }
-    await n(spec.early||'话说得太早了。先听完。');
+    if(L.key&&!L.done){ await cost(L.key.wrong||spec.wrong||'这句话回答不了这个问题。'); continue; }
+    await cost(spec.early||'话说得太早了。先听完。');
   }
   timerStop();
   return solved;
@@ -607,7 +667,9 @@ const PL={
   apollonia:{n:'亚波罗尼亚',m:'Nea Apollonia 一带',ll:[23.44,40.64],note:'夹在两个湖之间的小城（徒 17:1）。大道上的城镇，大约相隔一天路程。'},
   thess:{n:'帖撒罗尼迦',m:'Thessaloniki（塞萨洛尼基）',ll:[22.944,40.637],note:'马其顿省首府，主前 315 年建城，以亚历山大大帝的姊妹命名。主前 42 年起是自由城，由「地方官」治理（徒 17:6）。'},
   axios:{n:'阿克修斯河',m:'Axios / Vardar 河',ll:[22.66,40.62],note:'帖撒罗尼迦西边的大河，往庇哩亚要渡过它。'},
-  berea:{n:'庇哩亚',m:'Veria（韦里亚）',ll:[22.202,40.524],note:'不在大道上的山城。',v:'「这地方的人贤于帖撒罗尼迦的人，甘心领受这道，天天考查圣经，要晓得这道是与不是。」（徒 17:11）'},
+  pella:{n:'佩拉',m:'Pella（佩拉）',ll:[22.524,40.756],note:'马其顿的古都，亚历山大大帝的出生地，在厄纳齐亚大道上。'},
+  chalcis:{n:'哈尔基斯',m:'Chalcis（哈尔基斯）',ll:[23.6,38.46],note:'优卑亚岛与大陆之间最窄的海峡边。'},
+  berea:{n:'庇哩亚',m:'Veria（韦里亚）',ll:[22.202,40.524],note:'不在大道上的山城。罗马作家西塞罗称它为「偏僻的小城」。',v:'「这地方的人贤于帖撒罗尼迦的人，甘心领受这道，天天考查圣经，要晓得这道是与不是。」（徒 17:11）'},
   dion:{n:'底恩',m:'Dion（迪翁）',ll:[22.50,40.17],note:'奥林匹斯山脚下供奉宙斯的城。徒 17:14 只说「往海边去」，这里出海是推测。'},
   olympus:{n:'奥林匹斯山',m:'Mount Olympus',ll:[22.358,40.086],note:'希腊最高峰，约 2918 米。希腊人以为众神住在山顶。船沿岸南下，远远就能看见它。'},
   skiathos:{n:'斯基亚索斯岛',m:'Skiathos',ll:[23.49,39.16],note:'往南航行时经过的小岛。'},
@@ -714,6 +776,10 @@ function mapLeg(id,o){
   const ctl=$('#mctl'); ctl.innerHTML='';
   let p=0,off=0,gust=0,delay=0,busy=false,holding=false,steer=0,raf,resolve,ended=false;
   const kmDay=sea?100:30;
+  const api={
+    addDays:k=>{ delay+=k; toast(`多走了 ${k} 天`,'down'); },
+    alt:(pts,good)=>sel('path',{d:dPath(pts),fill:'none',stroke:good?'#2e7d32':'#9e9e9e','stroke-width':3,'stroke-dasharray':'4 5','vector-effect':'non-scaling-stroke'},MAPLAYERS.route)
+  };
   const mk=(t,cls)=>{ const b=document.createElement('button'); b.textContent=t; if(cls) b.className=cls; ctl.appendChild(b); return b; };
   if(sea){
     const bl=mk('◀ 往左拉'), br=mk('往右拉 ▶');
@@ -760,7 +826,7 @@ function mapLeg(id,o){
       if(!sea&&timerExpired()&&!holding) p+=.6;
       p=Math.min(p,smp.length-1);
       const st=stops.find(s=>!s.done&&p>=s.idx);
-      if(st){ busy=true; holding=false; st.done=true; p=st.idx; upd(); timerPause(); if(st.pl) await placeCard(st.pl); if(st.ev) await st.ev(); timerResume(); view('map'); busy=false; }
+      if(st){ busy=true; holding=false; st.done=true; p=st.idx; upd(); timerPause(); if(st.pl) await placeCard(st.pl); if(st.ev) await st.ev(api); timerResume(); view('map'); busy=false; }
       if(p>=smp.length-1&&!stops.some(s=>!s.done)){ upd(); finish(); return; }
     }
     upd(); raf=requestAnimationFrame(loop);
@@ -813,333 +879,526 @@ function watch(){
   });
 }
 
+/* ════════ 认地方 ════════ */
+function findPlace(target,cands,prompt,from){
+  S.geo=S.geo||{ok:0,total:0}; S.geo.total++;
+  if(AUTO){ S.geo.ok++; return Promise.resolve(true); }
+  view('map'); baseMap();
+  fitView(cands.map(k=>PL[k].ll).concat(from?[PL[from].ll]:[]),.35);
+  drawPlaces(from?[from]:[]);
+  const g=MAPLAYERS.actor; g.innerHTML=''; const u=MAPLAYERS.upp;
+  $('#mh1').textContent='认地方'; $('#mh2').textContent='找：'+PL[target].n; $('#mctl').innerHTML=''; $('#mtip').hidden=true;
+  hint(`${prompt}\n在地图上点出「${PL[target].n}」。`);
+  let tries=0,over=false; const marks={};
+  const pulse=()=>{ const c=marks[target]; if(c){ c.setAttribute('stroke','#f2b552'); c.setAttribute('stroke-width',5); } };
+  return new Promise(res=>{
+    timerStart('find','认地方：'+PL[target].n,()=>{ pulse(); toast('提示：发光的那一个'); });
+    cands.forEach(k=>{
+      const [x,y]=P(PL[k].ll);
+      const c=sel('circle',{cx:x,cy:y,r:17*u,fill:'rgba(192,57,43,.22)',stroke:'#c0392b','stroke-width':2.5,'vector-effect':'non-scaling-stroke',style:'cursor:pointer'},g);
+      marks[k]=c;
+      const label=col=>{ const tx=sel('text',{x:x+20*u,y:y+5*u,'font-size':14*u,'font-weight':700,fill:col,stroke:'#fff','stroke-width':3,'paint-order':'stroke','vector-effect':'non-scaling-stroke'},g); tx.textContent=PL[k].n; };
+      c.addEventListener('pointerdown',async e=>{
+        e.stopPropagation(); if(over||c.dataset.done) return;
+        if(k===target){ over=true; c.setAttribute('fill','rgba(46,125,50,.4)'); c.setAttribute('stroke','#2e7d32'); label('#2e7d32'); if(!tries) S.geo.ok++; timerStop(); toast('找到了','up'); await placeCard(k); res(!tries); }
+        else { tries++; c.dataset.done=1; c.setAttribute('fill','rgba(120,120,120,.3)'); c.setAttribute('stroke','#888'); label('#777'); toast('那是'+PL[k].n); if(LIGHT()) pulse(); }
+      });
+    });
+  });
+}
+
+/* ════════ 保罗的祷告 ════════ */
+const PRAYFOR=[['ar','亚里达古','在皮革街，被公会除名'],['jason','耶孙','保状压在他身上'],['chrysis','克律西','守寡，靠缝补度日'],['nikon','尼肯','刚刚埋葬了小女儿'],['agathe','阿迦特','婢女，身不由己'],['kalip','加力普','作坊的学徒']];
+function pray(){
+  S.prayed=S.prayed||{};
+  if(AUTO){ PRAYFOR.forEach(([k])=>S.prayed[k]=1); return Promise.resolve(); }
+  return new Promise(res=>{
+    view('pray'); const box=$('#plist'); box.innerHTML='';
+    const need=(LIGHT()?2.5:3.5)*1000; let left=PRAYFOR.length, fin=false;
+    const end=()=>{ if(fin) return; fin=true; timerStop(); setTimeout(res,500); };
+    hint('按住一个名字，为他祷告，直到底下的光条走满。');
+    timerStart('pray','保罗的祷告',()=>{ toast('天亮了'); end(); });
+    PRAYFOR.forEach(([k,name,sub])=>{
+      const b=document.createElement('button'); b.className='pcard'; b.innerHTML=`${name}<small>${sub}</small><i></i>`; box.appendChild(b);
+      let t0=0,raf=null,acc=0;
+      const tick=now=>{ const d=acc+(now-t0); b.querySelector('i').style.width=Math.min(100,d/need*100)+'%';
+        if(d>=need){ cancelAnimationFrame(raf); raf=null; b.classList.add('done'); b.onpointerdown=null; S.prayed[k]=1; toast('为'+name+'祷告了','up'); if(--left===0) end(); return; }
+        raf=requestAnimationFrame(tick); };
+      b.onpointerdown=e=>{ e.preventDefault(); if(b.classList.contains('done')) return; t0=performance.now(); raf=requestAnimationFrame(tick); };
+      const stop=()=>{ if(raf){ cancelAnimationFrame(raf); raf=null; acc+=performance.now()-t0; } };
+      b.onpointerup=b.onpointerleave=b.onpointercancel=stop;
+    });
+  });
+}
+const ECHO={
+  ar:'你发现自己不再那么怕叔父了。在公会门口遇见他，你还能平平静静地问安。',
+  jason:'地方官这个月没有来催保状。耶孙说：「不知道为什么。」',
+  chrysis:'克律西说，这些夜里醒来，心里总有一点说不出的平安。',
+  nikon:'尼肯这几天常来作坊坐坐，帮忙递皮子，话也多了一点。',
+  agathe:'阿迦特说，主人这几天没有再打她。',
+  kalip:'加力普那几天特别快乐。他说他梦见保罗回来了，还夸他的针脚缝得直。'
+};
+/* 从马其顿传到保罗耳中的消息：随亚里达古在城里的选择而不同 */
+function macedonianNews(){
+  const f=S.flags,L=[];
+  L.push(f.guild?'听说那里有人为了保住会籍和饭碗，又回公会给守护神奠酒了。':'听说帖撒罗尼迦有个皮匠，当着全公会的面不肯给守护神奠酒，被除了名。');
+  L.push(f.agoraOk?'广场上有人替你说话：你在他作坊做工，一文工钱都没拿。':'城里都在传，说你是骗了钱就跑的江湖术士。');
+  if(f.protected) L.push('还听说，有个皮匠在宴席上护着一个婢女，得罪了满座的客人。');
+  if((f.shopCare||0)>=5) L.push('那些新信的人，彼此照顾，连外人都看在眼里。');
+  return L;
+}
+
+/* ════════ 存档点：每一段完成就存一次 ════════ */
+let SEGI=0;
+async function seg(fn){
+  const k=SEGI++;
+  if(k<(S.resume||0)) return;
+  await fn();
+  S.cp=k+1; S.resume=0; S.inProgress=true; saveRun();
+}
+
 /* ════════════════ 章节 ════════════════ */
 async function ch0(){
-  S.ch=0; setWho('保罗');
-  place('哥林多','主后 50 年前后 · 亚居拉和百基拉的作坊');
-  await v('徒 18:1-3','这事以后，保罗离了雅典，来到哥林多。遇见一个犹太人，名叫亚居拉，他生在本都；因为革老丢命犹太人都离开罗马，新近带着他的妻百基拉从意大利来。保罗就投奔了他们。他们本是制造帐棚为业。保罗因与他们同业，就和他们同住做工。');
-  await s('aquila','保罗，这几片帐棚今天要缝完。坚革哩港有船在等。');
-  await stitch(5,'缝帐棚');
-  place('哥林多','亚居拉的作坊');
-  await s('priscilla','你的手在缝，心不在这里。又在想马其顿的那些人？');
-  await s('paul','我打发提摩太回帖撒罗尼迦，已经很久了。我怕那诱惑人的诱惑了他们，叫我们的劳苦归于徒然。');
-  await n('门外有人跑过来。');
-  await s('timothy','保罗！保罗！');
-  await n('提摩太和西拉站在门口，满身尘土。他们从马其顿来。');
-  await v('徒 18:5','西拉和提摩太从马其顿来的时候，保罗为道迫切，向犹太人证明耶稣是基督。');
-  await s('timothy','他们站住了！耶孙、亚里达古、西公都……他们的信心和爱心都还在。他们常常记念你，切切地想见你。');
-  await n('保罗放下针，很久没有说话。');
-  await v('帖前 3:7-8','所以弟兄们，我们在一切困苦患难之中，因着你们的信心就得了安慰。你们若靠主站立得稳，我们就活了。');
-  await s('timothy','可是……他们也有问题。（他打开一个皮袋）有人睡了，他们问：睡了的人怎么办？主的日子到底什么时候来？还有人干脆不做工了……');
-  await n('一位替人抄写的弟兄坐到桌边，摊开皮纸。他叫亚挪尼摩——希腊话 Ἀνώνυμος，意思是「无名的人」。');
-  await s('paul','亚挪尼摩，拿笔来。我说，你写。');
-  await s('scribe','（他蘸了蘸墨）请说。');
-  await v('帖前 1:1','保罗、西拉、提摩太写信给帖撒罗尼迦在父神与主耶稣基督里的教会。愿恩惠、平安归与你们！');
-  await overview(['corinth','athens','thess','philippi','berea'],['l5'],'这封信要从哥林多出发，走五百多公里，到帖撒罗尼迦。');
-  await s('paul','要说他们的事，得从头说起。从腓立比说起。');
+  await seg(async()=>{
+    setWho('保罗');
+    place('哥林多','主后 50 年前后 · 亚居拉和百基拉的作坊');
+    await v('徒 18:1-3','这事以后，保罗离了雅典，来到哥林多。遇见一个犹太人，名叫亚居拉，他生在本都；因为革老丢命犹太人都离开罗马，新近带着他的妻百基拉从意大利来。保罗就投奔了他们。他们本是制造帐棚为业。保罗因与他们同业，就和他们同住做工。');
+    await s('aquila','保罗，这几片帐棚今天要缝完。坚革哩港有船在等。');
+    await stitch(5,'缝帐棚');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    place('哥林多','亚居拉的作坊');
+    await s('priscilla','你的手在缝，心不在这里。又在想马其顿的那些人？');
+    await s('paul','我打发提摩太回帖撒罗尼迦，已经很久了。我怕那诱惑人的诱惑了他们，叫我们的劳苦归于徒然。');
+    await n('门外有人跑过来。');
+    await s('timothy','保罗！保罗！');
+    await n('提摩太和西拉站在门口，满身尘土。他们从马其顿来。');
+    await v('徒 18:5','西拉和提摩太从马其顿来的时候，保罗为道迫切，向犹太人证明耶稣是基督。');
+    await s('timothy','他们站住了！耶孙、亚里达古、西公都……他们的信心和爱心都还在。他们常常记念你，切切地想见你。');
+    await n('保罗放下针，很久没有说话。');
+    await v('帖前 3:7-8','所以弟兄们，我们在一切困苦患难之中，因着你们的信心就得了安慰。你们若靠主站立得稳，我们就活了。');
+    await s('timothy','可是……他们也有问题。（他打开一个皮袋）有人睡了，他们问：睡了的人怎么办？主的日子到底什么时候来？还有人干脆不做工了……');
+    await n('一位替人抄写的弟兄坐到桌边，摊开皮纸。他叫亚挪尼摩——希腊话 Ἀνώνυμος，意思是「无名的人」。');
+    await s('paul','亚挪尼摩，拿笔来。我说，你写。');
+    await s('scribe','（他蘸了蘸墨）请说。');
+    await v('帖前 1:1','保罗、西拉、提摩太写信给帖撒罗尼迦在父神与主耶稣基督里的教会。愿恩惠、平安归与你们！');
+    await overview(['corinth','athens','thess','philippi','berea'],['l5'],'这封信要从哥林多出发，走五百多公里，到帖撒罗尼迦。');
+    await s('paul','要说他们的事，得从头说起。从腓立比说起。');
+  });
 }
 
 async function ch1(){
-  S.ch=1; S.words=[]; setWho('保罗');
-  place('腓立比','几个月前');
-  await v('帖前 2:2','我们从前在腓立比被害受辱，这是你们知道的；然而还是靠我们的神放开胆量，在大争战中把神的福音传给你们。');
-  await s('silas','背上的伤还疼吗？');
-  await s('paul','走吧。沿着大道往西。');
-  await mapLeg('l1',{stops:[
-    {pl:'philippi'},
-    {at:[24.12,40.97],ev:async()=>{ await n('路边立着一块里程碑，上面刻着拉丁文和希腊文。'); await s('silas','厄纳齐亚大道。罗马人修的路，从亚得里亚海一直通到东方。军队走它，商人走它——'); await s('paul','福音也走它。'); }},
-    {pl:'amphipolis',ev:async()=>{ await n('过河的时候，保罗的背又渗出血来。他没有停。'); }},
-    {pl:'apollonia',ev:async()=>{ await s('traveler','你们往帖撒罗尼迦去？那是马其顿最大的城，城里有会堂。'); }},
-    {pl:'thess'}
-  ]});
-  place('帖撒罗尼迦','皮革街');
-  await n('进城以后，保罗先找活干。皮革街上，一个年轻的皮匠收留他们做工——他叫亚里达古。');
-  await s('kalip','师傅，这个外地人手上的茧，比你还厚！');
-  place('会堂','一连三个安息日');
-  await v('徒 17:2-3','保罗照他素常的规矩进去，一连三个安息日，本着圣经与他们辩论，讲解陈明基督必须受害，从死里复活；又说：「我所传与你们的这位耶稣，就是基督。」');
-  await n('（在长者说到关键的地方时，出示经文。）');
-  const cards=['isa53_5','isa53_3','ps16_10'];
-  await present({who:'elder',cards,intro:'第一个安息日。',lines:[
-    {t:'你说，弥赛亚已经来了，而且被罗马人钉死了？'},
-    {t:'律法上写着：「被挂的人是在神面前受咒诅的。」一个受咒诅的人，怎能是神的受膏者？',key:{need:['isa53_5'],ok:[['paul','他受咒诅，不是因为自己的罪，是为我们的过犯。'],['elder','……这一段，我读过很多次。我从没这样想过。']]}}]});
-  await present({who:'elder2',cards,intro:'第二个安息日。',lines:[
-    {t:'弥赛亚是大卫的子孙，是得胜的王。'},
-    {t:'得胜的王，怎么会多受痛苦，被人厌弃？',key:{need:['isa53_3'],ok:[['paul','先知早就说了：他要被藐视，被人厌弃。'],['elder2','（他沉默了很久）']]}}]});
-  await present({who:'elder',cards,intro:'第三个安息日。',lines:[
-    {t:'就算他是义人。'},
-    {t:'他死了，埋了。死人怎能作永远的王？',key:{need:['ps16_10'],ok:[['paul','大卫说：「你必不叫你的圣者见朽坏。」大卫自己见了朽坏，这话说的是谁？神叫他从死里复活了。'],['paul','我所传与你们的这位耶稣，就是基督。']]}}]});
-  await v('徒 17:4','他们中间有些人听了劝，就附从保罗和西拉，并有许多虔敬的希腊人，尊贵的妇女也不少。');
-  await n('有人信了，也有人转身走了。辩论说得再好，也叫不醒一个人的心。');
-  await v('帖前 1:5','因为我们的福音传到你们那里，不独在乎言语，也在乎权能和圣灵，并充足的信心。');
-  setWho('亚里达古');
-  place('你的家','神龛');
-  await n('那天夜里，你回到家，看着墙上的神龛：皮革匠的守护神，旁边还有一尊小小的凯撒像——是叔父送的。');
-  await shrine();
-  place('你的家','');
-  await n('墙上空了。你心里却像有什么亮了起来。');
-  await v('帖前 1:9','……你们是怎样离弃偶像，归向神，要服侍那又真又活的神，');
-  await learn('wait');
-  await horizon('帖前 1:10','等候他儿子从天降临，就是他从死里复活的，那位救我们脱离将来忿怒的耶稣。');
+  await seg(async()=>{
+    S.words=[]; setWho('保罗');
+    place('腓立比','几个月前');
+    await v('帖前 2:2','我们从前在腓立比被害受辱，这是你们知道的；然而还是靠我们的神放开胆量，在大争战中把神的福音传给你们。');
+    await s('silas','背上的伤还疼吗？');
+    await s('paul','走吧。往西去马其顿最大的城。');
+    await findPlace('thess',['thess','berea','amphipolis','pella'],'保罗要从腓立比沿着大道往西，去马其顿最大的城。','philippi');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    await mapLeg('l1',{stops:[
+      {pl:'philippi'},
+      {at:[24.12,40.97],ev:async()=>{ await n('路边立着一块里程碑，上面刻着拉丁文和希腊文。'); await s('silas','厄纳齐亚大道。罗马人修的路，从亚得里亚海一直通到东方。军队走它，商人走它——'); await s('paul','福音也走它。'); }},
+      {pl:'amphipolis',ev:async()=>{ await n('过河的时候，保罗的背又渗出血来。他没有停。'); }},
+      {pl:'apollonia',ev:async()=>{ await s('traveler','你们往帖撒罗尼迦去？那是马其顿最大的城，城里有会堂。'); }},
+      {pl:'thess'}
+    ]});
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    place('帖撒罗尼迦','皮革街');
+    await n('进城以后，保罗先找活干。皮革街上，一个年轻的皮匠收留他们做工——他叫亚里达古。');
+    await s('kalip','师傅，这个外地人手上的茧，比你还厚！');
+    place('会堂','一连三个安息日');
+    await v('徒 17:2-3','保罗照他素常的规矩进去，一连三个安息日，本着圣经与他们辩论，讲解陈明基督必须受害，从死里复活；又说：「我所传与你们的这位耶稣，就是基督。」');
+    await n('（长者说到关键的地方时，从下面的手牌里出示经文。出示错了，他的心门会关上一点。）');
+    const cards=['isa53_5','isa53_3','ps16_10'];
+    await present({who:'elder',cards,label:'会堂辩经（一）',intro:'第一个安息日。',lines:[
+      {t:'你说，弥赛亚已经来了，而且被罗马人钉死了？'},
+      {t:'律法上写着：「被挂的人是在神面前受咒诅的。」一个受咒诅的人，怎能是神的受膏者？',key:{need:['isa53_5'],ok:[['paul','他受咒诅，不是因为自己的罪，是为我们的过犯。'],['elder','……这一段，我读过很多次。我从没这样想过。']]}}]});
+    await present({who:'elder2',cards,label:'会堂辩经（二）',intro:'第二个安息日。',lines:[
+      {t:'弥赛亚是大卫的子孙，是得胜的王。'},
+      {t:'得胜的王，怎么会多受痛苦，被人厌弃？',key:{need:['isa53_3'],ok:[['paul','先知早就说了：他要被藐视，被人厌弃。'],['elder2','（他沉默了很久）']]}}]});
+    await present({who:'elder',cards,label:'会堂辩经（三）',intro:'第三个安息日。',lines:[
+      {t:'就算他是义人。'},
+      {t:'他死了，埋了。死人怎能作永远的王？',key:{need:['ps16_10'],ok:[['paul','大卫说：「你必不叫你的圣者见朽坏。」大卫自己见了朽坏，这话说的是谁？神叫他从死里复活了。'],['paul','我所传与你们的这位耶稣，就是基督。']]}}]});
+    await v('徒 17:4','他们中间有些人听了劝，就附从保罗和西拉，并有许多虔敬的希腊人，尊贵的妇女也不少。');
+    await n('有人信了，也有人转身走了。辩论说得再好，也叫不醒一个人的心。');
+    await v('帖前 1:5','因为我们的福音传到你们那里，不独在乎言语，也在乎权能和圣灵，并充足的信心。');
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('你的家','神龛');
+    await n('那天夜里，你回到家，看着墙上的神龛：皮革匠的守护神，旁边还有一尊小小的凯撒像——是叔父送的。');
+    await shrine();
+    place('你的家','');
+    await n('墙上空了。你心里却像有什么亮了起来。');
+    await v('帖前 1:9','……你们是怎样离弃偶像，归向神，要服侍那又真又活的神，');
+    await learn('wait');
+    await horizon('帖前 1:10','等候他儿子从天降临，就是他从死里复活的，那位救我们脱离将来忿怒的耶稣。');
+  });
 }
 
 async function ch2(){
-  S.ch=2; if(!S.words.includes('wait')) S.words=['wait']; S.words=S.words.filter(w=>w==='wait'); setWho('保罗');
-  place('亚里达古的作坊','白天做工，晚上讲道');
-  await v('帖前 2:9','弟兄们，你们记念我们的辛苦劳碌，昼夜做工，传神的福音给你们，免得叫你们一人受累。');
-  await v('帖前 2:7','只在你们中间存心温柔，如同母亲乳养自己的孩子。');
-  await v('帖前 2:11-12','你们也晓得我们怎样劝勉你们，安慰你们，嘱咐你们各人，好像父亲待自己的儿女一样，要叫你们行事对得起那召你们进他国得他荣耀的神。');
-  await n('（一边缝帐棚，一边接待来找你的人。有人需要温柔，像母亲；有人需要劝勉，像父亲。）');
-  const r=await shop();
-  place('作坊','夜深');
-  if(r.bread>=r.goal) await n(`你缝了 ${r.bread} 片帐棚，够付这个月的饭钱。来找你的人，有 ${r.care} 个得了安慰。`);
-  else await n(`帐棚只缝了 ${r.bread} 片，还差一点。那一夜，保罗点着灯，又多缝了几个时辰——昼夜做工。来找你的人，有 ${r.care} 个得了安慰。`);
-  await n('有一天，腓立比来了两个弟兄，带着银子。');
-  await v('腓 4:16','就是我在帖撒罗尼迦，你们也一次两次打发人供给我的需用。');
-  await n('保罗把银子换成饼，第一篮就放在作坊的桌上。'); gainEv('bread');
-  place('富商家门口','');
-  await s('merchant','保罗先生，你口才这么好，何必缝帐棚？来我家住，吃住我全包。只是……讲道的时候，别再提什么「另有一个王」。');
-  const f=await choose([{t:'婉拒',v:0},{t:'答应下来',v:1}]);
-  if(f){ S.flags.flatter=true; await n('你住进了富商家。可是每次讲道，你都发现自己在挑话说。'); await n('三天后，你搬回了作坊。可是城里已经有人在说：「那个犹太人住在富人家里。」'); }
-  else await n('你谢了他，回作坊去了。');
-  await v('帖前 2:4-5','但神既然验中了我们，把福音托付我们，我们就照样讲，不是要讨人喜欢，乃是要讨那察验我们心的神喜欢。因为我们从来没有用过谄媚的话，这是你们知道的；也没有藏着贪心，这是神可以作见证的。');
-  place('作坊','夜里的教导');
-  await n('城里的风声越来越紧。你还能讲几个晚上？挑三样最要紧的，先教他们。');
-  const pool=['affl','thief','holy','work','walk']; let left=3;
-  while(left>0){
-    const c=await choose([...pool.filter(k=>!S.words.includes(k)).map(k=>({t:CARD[k].s,sub:CARD[k].ref,v:k})),
-      {t:'彼此相爱',sub:'不用你教——「你们自己蒙了神的教训」（4:9）',v:'x',dis:true},
-      {t:'睡了的人会怎样',sub:'还来不及讲',v:'x',dis:true}],`今晚教什么？（还能教 ${left} 样）`);
-    if(AUTO&&!c) break;
-    await learn(c); left--;
-  }
-  setWho('亚里达古');
-  place('作坊门口','');
-  await n('阿迦特常常站在作坊门外。她是你叔父家的婢女，从小和你一起长大。');
-  await s('agathe','少主人，我在会堂窗外听过他讲。我比你先信的。……我可以进来听吗？');
-  const a=await choose([{t:'「进来吧。在这里，没有主人和婢女。」',v:1},{t:'「叔父知道了会打你的。站在门外听吧。」',v:0}]);
-  if(a){ await n('她迟疑了一下，跨过了门槛。'); S.lamp.agathe++; } else await n('她点点头，仍旧站在门外。');
-  await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
-  await s('paul','（他笑了）好，你第一个。');
-  await horizon('帖前 2:19-20','我们的盼望和喜乐，并所夸的冠冕是什么呢？岂不是我们主耶稣来的时候你们在他面前站立得住吗？因为你们就是我们的荣耀，我们的喜乐。');
+  await seg(async()=>{
+    S.words=['wait']; setWho('保罗');
+    place('亚里达古的作坊','白天做工，晚上讲道');
+    await v('帖前 2:9','弟兄们，你们记念我们的辛苦劳碌，昼夜做工，传神的福音给你们，免得叫你们一人受累。');
+    await v('帖前 2:7','只在你们中间存心温柔，如同母亲乳养自己的孩子。');
+    await v('帖前 2:11-12','你们也晓得我们怎样劝勉你们，安慰你们，嘱咐你们各人，好像父亲待自己的儿女一样，要叫你们行事对得起那召你们进他国得他荣耀的神。');
+    await n('（一边缝帐棚，一边接待来找你的人。有人需要温柔，像母亲；有人需要劝勉，像父亲。）');
+    const r=await shop();
+    S.flags.shopCare=r.care;
+    place('作坊','夜深');
+    if(r.bread>=r.goal) await n(`你缝了 ${r.bread} 片帐棚，够付这个月的饭钱。来找你的人，有 ${r.care} 个得了安慰。`);
+    else await n(`帐棚只缝了 ${r.bread} 片，还差一点。那一夜，保罗点着灯，又多缝了几个时辰——昼夜做工。来找你的人，有 ${r.care} 个得了安慰。`);
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    place('作坊','');
+    await n('有一天，腓立比来了两个弟兄，带着银子。');
+    await v('腓 4:16','就是我在帖撒罗尼迦，你们也一次两次打发人供给我的需用。');
+    await n('保罗把银子换成饼，第一篮就放在作坊的桌上。'); gainEv('bread');
+    place('富商家门口','');
+    await s('merchant','保罗先生，你口才这么好，何必缝帐棚？来我家住，吃住我全包。只是……讲道的时候，别再提什么「另有一个王」。');
+    const f=await choose([{t:'婉拒',v:0},{t:'答应下来',v:1}]);
+    if(f){ S.flags.flatter=true; await n('你住进了富商家。可是每次讲道，你都发现自己在挑话说。'); await n('三天后，你搬回了作坊。可是城里已经有人在说：「那个犹太人住在富人家里。」'); }
+    else await n('你谢了他，回作坊去了。');
+    await v('帖前 2:4-5','但神既然验中了我们，把福音托付我们，我们就照样讲，不是要讨人喜欢，乃是要讨那察验我们心的神喜欢。因为我们从来没有用过谄媚的话，这是你们知道的；也没有藏着贪心，这是神可以作见证的。');
+    place('作坊','夜里的教导');
+    await n('城里的风声越来越紧。你还能讲几个晚上？挑三样最要紧的，先教他们。教过的话，以后会成为他们手里的话。');
+    const pool=['affl','thief','holy','work','walk']; let left=3;
+    while(left>0){
+      const c=await choose([...pool.filter(k=>!S.words.includes(k)).map(k=>({t:CARD[k].s,sub:CARD[k].ref,v:k})),
+        {t:'彼此相爱',sub:'不用你教——「你们自己蒙了神的教训」（4:9）',v:'x',dis:true},
+        {t:'睡了的人会怎样',sub:'还来不及讲',v:'x',dis:true}],`今晚教什么？（还能教 ${left} 样）`);
+      if(AUTO&&!c) break;
+      await learn(c); left--;
+    }
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('作坊门口','');
+    await n('阿迦特常常站在作坊门外。她是你叔父家的婢女，从小和你一起长大。');
+    await s('agathe','少主人，我在会堂窗外听过他讲。我比你先信的。……我可以进来听吗？');
+    const a=await choose([{t:'「进来吧。在这里，没有主人和婢女。」',v:1},{t:'「叔父知道了会打你的。站在门外听吧。」',v:0}]);
+    if(a){ await n('她迟疑了一下，跨过了门槛。'); S.lamp.agathe++; } else await n('她点点头，仍旧站在门外。');
+    await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
+    await s('paul','（他笑了）好，你第一个。');
+    await horizon('帖前 2:19-20','我们的盼望和喜乐，并所夸的冠冕是什么呢？岂不是我们主耶稣来的时候你们在他面前站立得住吗？因为你们就是我们的荣耀，我们的喜乐。');
+  });
 }
 
 async function ch3(){
-  S.ch=3; setWho('亚里达古');
-  place('皮革街','夜');
-  await s('kalip','师傅！一大群人拿着火把往耶孙家去了——喊着要抓保罗！');
-  await n('你把保罗和西拉藏进作坊后间的皮料堆里。火把的光从门缝外一闪一闪地过去。');
-  await v('徒 17:5-6','但那不信的犹太人心里嫉妒，招聚些市井匪类，聚集成群，耸动合城的人，闯进耶孙的家，要把保罗、西拉带到百姓那里。找不着他们，就把耶孙和几个弟兄拉到地方官那里……');
-  place('地方官面前','天亮');
-  await v('徒 17:8-9','众人和地方官听见这话，就惊慌了；于是取了耶孙和其余人的保状，就把他们释放了。');
-  await n('你在人群里看见了叔父狄奥多罗。他穿着公会会首的长袍，站在地方官身边。');
-  await s('uncle','让耶孙作保，让那犹太人走。现在这几位地方官在任一天，就不准他回来——不然罗马来查问，整条皮革街都得完。');
-  await s('jason','（他脸色发白）今夜就得走。');
-  await v('徒 17:10','弟兄们随即在夜间打发保罗和西拉往庇哩亚去。');
-  await sneak();
-  place('西门','夜');
-  await s('paul','亚里达古，我们只是暂时离别。面目离别，心里却不离别。');
-  await s('paul','这把锥子跟了我很多年，磨秃了。留给你。'); gainEv('awl'); gainEv('night');
-  await n('你决定陪他们走一段夜路，往庇哩亚去。');
-  await mapLeg('l2',{stops:[{pl:'axios',ev:async()=>{ await n('河水在黑暗里响。西拉扶着保罗，一步一步蹚过浅滩。'); }},{pl:'berea'}]});
-  place('庇哩亚','');
-  await n('你在庇哩亚和他们分手，独自回帖撒罗尼迦。');
-  setWho('保罗');
-  await v('徒 17:13-15','但帖撒罗尼迦的犹太人知道保罗又在庇哩亚传神的道，也就往那里去，耸动搅扰众人。当时弟兄们便打发保罗往海边去；西拉和提摩太仍住在庇哩亚。送保罗的人带他到了雅典，既领了保罗的命，叫西拉和提摩太速速到他这里来，就回去了。');
-  await s('silas','你先走。我和提摩太留下。');
-  await mapLeg('l3a',{stops:[{pl:'dion'}]});
-  await n('（航海：船会自己走。风把船吹偏时，按住左右按钮把船拉回航道。）');
-  await mapLeg('l3b',{stops:[
-    {pl:'olympus'},
-    {at:[24.3,39.4],ev:async()=>{ await n('船在开阔的海上。保罗望着北方。'); await say('me','（心里）弟兄们，我们暂时与你们离别，是面目离别，心里却不离别……'); }},
-    {at:[24.8,38.3],ev:async()=>{ await n('风浪大起来了。水手把帆收了一半。'); }},
-    {pl:'sounion'},{pl:'piraeus'},{pl:'athens'}
-  ]});
-  await v('徒 17:16','保罗在雅典等候他们的时候，看见满城都是偶像，就心里着急。');
-  await n('他离帖撒罗尼迦，已经五百多公里了。');
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('皮革街','夜');
+    await s('kalip','师傅！一大群人拿着火把往耶孙家去了——喊着要抓保罗！');
+    await n('你把保罗和西拉藏进作坊后间的皮料堆里。火把的光从门缝外一闪一闪地过去。');
+    await v('徒 17:5-6','但那不信的犹太人心里嫉妒，招聚些市井匪类，聚集成群，耸动合城的人，闯进耶孙的家，要把保罗、西拉带到百姓那里。找不着他们，就把耶孙和几个弟兄拉到地方官那里……');
+    place('地方官面前','天亮');
+    await v('徒 17:8-9','众人和地方官听见这话，就惊慌了；于是取了耶孙和其余人的保状，就把他们释放了。');
+    await n('你在人群里看见了叔父狄奥多罗。他穿着公会会首的长袍，站在地方官身边。');
+    await s('uncle','让耶孙作保，让那犹太人走。现在这几位地方官在任一天，就不准他回来——不然罗马来查问，整条皮革街都得完。');
+    await s('jason','（他脸色发白）今夜就得走。');
+    await v('徒 17:10','弟兄们随即在夜间打发保罗和西拉往庇哩亚去。');
+    await sneak();
+    place('西门','夜');
+    await s('paul','亚里达古，我们只是暂时离别。面目离别，心里却不离别。');
+    await s('paul','这把锥子跟了我很多年，磨秃了。留给你。'); gainEv('awl'); gainEv('night');
+    await n('你决定陪他们走一段夜路，往庇哩亚去。');
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    await findPlace('berea',['berea','pella','pydna','dion'],'往西南去，有一座不在大道上的山城。','thess');
+    await mapLeg('l2',{stops:[{pl:'axios',ev:async api=>{
+      await n('河水在黑暗里响。西拉扶着保罗，一步一步蹚过浅滩。');
+      await n('过了河，路分成两条。');
+      const k=await choose([{t:'沿着大道往西',v:'road',sub:'路平，通往佩拉'},{t:'离开大道，走西南的小路',v:'path',sub:'往庇哩亚'}],'走哪一条？');
+      if(k==='road'){ api.alt([[22.66,40.62],[22.524,40.756]],false); await n('大道上远远有火把在移动。那是巡逻的兵，追兵也会走这条大路。你们折了回来。'); api.addDays(1); }
+      api.alt([[22.66,40.62],[22.50,40.59]],true);
+      await n('你们离开大道，走进黑暗的小路。庇哩亚不在大道上——正因为偏僻，才好藏身。');
+    }},{pl:'berea'}]});
+    place('庇哩亚','');
+    await n('你在庇哩亚和他们分手，独自回帖撒罗尼迦。');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    await v('徒 17:13-15','但帖撒罗尼迦的犹太人知道保罗又在庇哩亚传神的道，也就往那里去，耸动搅扰众人。当时弟兄们便打发保罗往海边去；西拉和提摩太仍住在庇哩亚。送保罗的人带他到了雅典，既领了保罗的命，叫西拉和提摩太速速到他这里来，就回去了。');
+    await s('silas','你先走。我和提摩太留下。');
+    await mapLeg('l3a',{stops:[{pl:'dion'}]});
+    await findPlace('athens',['athens','corinth','thebes','chalcis'],'送保罗的人要带他坐船，去希腊最有名的城。','dion');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    await n('（航海：船会自己走。风把船吹偏时，按住左右按钮把船拉回航道。）');
+    await mapLeg('l3b',{stops:[
+      {pl:'olympus'},
+      {at:[24.3,39.4],ev:async()=>{ await n('船在开阔的海上。保罗望着北方。'); await say('me','（心里）弟兄们，我们暂时与你们离别，是面目离别，心里却不离别……'); }},
+      {at:[24.8,38.3],ev:async()=>{ await n('风浪大起来了。水手把帆收了一半。'); }},
+      {pl:'sounion'},{pl:'piraeus'},{pl:'athens'}
+    ]});
+    await v('徒 17:16','保罗在雅典等候他们的时候，看见满城都是偶像，就心里着急。');
+    await n('他离帖撒罗尼迦，已经五百多公里了。');
+  });
 }
 
 async function ch4(){
-  S.ch=4; setWho('亚里达古');
-  place('皮革匠公会','月宴');
-  await n('会所里点着许多灯。正中是行业守护神的像，旁边是一尊凯撒像，前面摆着酒和祭肉。叔父端起一杯酒，递到你面前。');
-  const pour=await choose([{t:'接过酒杯，照样奠酒',v:1,sub:'保住会籍、生意，和死后的丧葬钱'},{t:'把酒杯放回桌上',v:0,sub:'当众站到尾端'}]);
-  if(pour){ S.flags.guild=true; await n('酒洒在地上。叔父拍了拍你的肩。回家的路上，你心里很暗。'); }
-  else { await n('有人朝你脚边吐了一口唾沫。公会把你和加力普的名字，从会册上划掉了。'); }
-  await n('宴席过了三巡。一个醉醺醺的客人一把拽住端酒的阿迦特。在这座城里，没有人觉得这有什么不对。');
-  const pr=await choose([{t:'站出来，把阿迦特护到身后',v:1,sub:'会得罪叔父的客人'},{t:'低下头，装作没看见',v:0}]);
-  if(pr){ S.flags.protected=true; S.lamp.agathe++; await s('me','她是和我一起长大的妹妹。'); await n('那个客人骂了一句。叔父的脸沉了下来。'); }
-  else { S.lamp.agathe--; await n('阿迦特看了你一眼。你没有抬头。'); }
-  place('城中广场','');
-  await n('广场上，有人围着一个人，听他说得起劲。加力普站在你身后，脸色发白。');
-  await n('（他每说一句，你都可以出示证据或保罗教过的话。找出不对的地方。）');
-  const evCards=[...S.ev,...S.words.filter(w=>['affl','thief'].includes(w))];
-  const lines=[
-    {s:'crowd',t:'那个犹太人白吃白住，骗了你们的钱！',key:{need:['ledger'],ok:[['crowd','……工钱都没拿？']]}},
-    {s:'crowd',t:'他嘴甜得很，专拣好听的话哄人。',key:{need:['affl','thief'],ok:[['me','他当面告诉我们：「我们必受患难。」哄人的人，会这样说吗？'],['crowd','（他噎住了）']],wrong:'这证明不了他没有说好听的话。'}},
-    {s:'crowd',t:'他拿了腓立比人的银子，自己享受！',key:{need:['bread'],ok:[['crowd','……分给别人了？']]}},
-    {s:'crowd',t:'半夜偷偷溜走，可见心虚！',key:{need:['night'],ok:[['crowd','……那是你们自己送走的？']]}}
-  ];
-  if(S.flags.flatter) lines.splice(3,0,{s:'crowd',t:'而且他住在富商家里，吃香喝辣！',key:{need:['__none'],ok:[],wrong:'你答不上来。他确实在富商家住过几天。'}});
-  await present({cards:evCards,lines,lack:S.flags.flatter,again:'他换了个说法，又嚷了一遍。'});
-  await n('人群慢慢散了。');
-  await v('帖前 2:3','我们的劝勉不是出于错误，不是出于污秽，也不是用诡诈。');
-  place('城外坟地','清晨');
-  await n('天刚亮，西公都来敲门：尼肯的小女儿埃拉，夜里睡了，没有再醒过来。她是城里第一个在主里睡了的人。');
-  await n('你们埋葬了她。尼肯跪在坟前，不肯起来。');
-  await present({who:'nikon',cards:S.words,lack:true,lines:[
-    {t:'保罗说过，主要从天降临。'},
-    {t:'可是她……她已经在地里了。'},
-    {t:'主来的那天，她会不会错过？',key:{need:['__none'],ok:[],wrong:'这句话回答不了他。保罗没有教过这件事。'}}]});
-  await n('你手里没有话。你只能在坟前陪他坐着，一直坐到太阳升起来。');
-  await v('帖前 3:10','我们昼夜切切地祈求，要见你们的面，补满你们信心的不足。');
-  setWho('保罗');
-  place('雅典','');
-  await n('雅典。保罗一天比一天着急。');
-  await n('（试着往北，回帖撒罗尼迦去。）');
-  await mapLeg('l4a',{});
-  await n('消息从北边传来：帖撒罗尼迦那边的人还盯着，耶孙的保状还在。这条路走不通。');
-  await n('（再试一次。）');
-  await mapLeg('l4b',{});
-  await n('又被拦住了。');
-  await v('帖前 2:17-18','弟兄们，我们暂时与你们离别，是面目离别，心里却不离别；我们极力地想法子，很愿意见你们的面。所以我们有意到你们那里；我保罗有一两次要去，只是撒但阻挡了我们。');
-  await s('paul','（他坐在雅典满城的偶像中间）我不能再忍了。');
-  await v('帖前 3:1-2','我们既不能再忍，就愿意独自等在雅典，打发我们的兄弟在基督福音上作神执事的提摩太前去，坚固你们，并在你们所信的道上劝慰你们，');
-  await choose([{t:'打发提摩太去',v:1,sub:'自己留下，独自一人'}]);
-  await n('提摩太往北去了。保罗一个人往西，去哥林多。');
-  await mapLeg('l4',{stops:[{pl:'eleusis'},{pl:'megara'},{pl:'isthmus'},{pl:'corinth',ev:async()=>{ await n('在哥林多，他遇见了亚居拉和百基拉——也是做帐棚的。'); }}]});
-  await horizon('帖前 3:13','好使你们当我们主耶稣同他众圣徒来的时候，在我们父神面前，心里坚固，成为圣洁，无可责备。');
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('皮革匠公会','月宴');
+    await n('会所里点着许多灯。正中是行业守护神的像，旁边是一尊凯撒像，前面摆着酒和祭肉。叔父端起一杯酒，递到你面前。');
+    const pour=await choose([{t:'接过酒杯，照样奠酒',v:1,sub:'保住会籍、生意，和死后的丧葬钱'},{t:'把酒杯放回桌上',v:0,sub:'当众站到尾端'}]);
+    if(pour){ S.flags.guild=true; await n('酒洒在地上。叔父拍了拍你的肩。回家的路上，你心里很暗。'); }
+    else { S.flags.guild=false; await n('有人朝你脚边吐了一口唾沫。公会把你和加力普的名字，从会册上划掉了。'); }
+    await n('宴席过了三巡。一个醉醺醺的客人一把拽住端酒的阿迦特。在这座城里，没有人觉得这有什么不对。');
+    const pr=await choose([{t:'站出来，把阿迦特护到身后',v:1,sub:'会得罪叔父的客人'},{t:'低下头，装作没看见',v:0}]);
+    if(pr){ S.flags.protected=true; S.lamp.agathe++; await s('me','她是和我一起长大的妹妹。'); await n('那个客人骂了一句。叔父的脸沉了下来。'); }
+    else { S.lamp.agathe--; await n('阿迦特看了你一眼。你没有抬头。'); }
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('城中广场','');
+    await n('广场上，有人围着一个人，听他说得起劲。加力普站在你身后，脸色发白。');
+    await n('（他每说一句，你都可以从手牌里出示证据或保罗教过的话。找出不对的地方。乱出示，围观的人就不信你了。）');
+    const evCards=[...S.ev,...S.words.filter(w=>['affl','thief'].includes(w))];
+    const lines=[
+      {s:'crowd',t:'那个犹太人白吃白住，骗了你们的钱！',key:{need:['ledger'],ok:[['crowd','……工钱都没拿？']]}},
+      {s:'crowd',t:'他嘴甜得很，专拣好听的话哄人。',key:{need:['affl','thief'],ok:[['me','他当面告诉我们：「我们必受患难。」哄人的人，会这样说吗？'],['crowd','（他噎住了）']],wrong:'这证明不了他没有说好听的话。'}},
+      {s:'crowd',t:'他拿了腓立比人的银子，自己享受！',key:{need:['bread'],ok:[['crowd','……分给别人了？']]}},
+      {s:'crowd',t:'半夜偷偷溜走，可见心虚！',key:{need:['night'],ok:[['crowd','……那是你们自己送走的？']]}}
+    ];
+    if(S.flags.flatter) lines.splice(3,0,{s:'crowd',t:'而且他住在富商家里，吃香喝辣！',key:{need:['__none'],ok:[],wrong:'你答不上来。他确实在富商家住过几天。'}});
+    const solved=await present({who:'crowd',cards:evCards,lines,label:'广场对质',again:'他换了个说法，又嚷了一遍。'});
+    S.flags.agoraOk=solved>=3&&!S.flags.flatter;
+    await n(S.flags.agoraOk?'人群慢慢散了。有人边走边说：「原来是这样。」':'人群慢慢散了。可是那些话，已经在城里传开了。');
+    await v('帖前 2:3','我们的劝勉不是出于错误，不是出于污秽，也不是用诡诈。');
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('城外坟地','清晨');
+    await n('天刚亮，西公都来敲门：尼肯的小女儿埃拉，夜里睡了，没有再醒过来。她是城里第一个在主里睡了的人。');
+    await n('你们埋葬了她。尼肯跪在坟前，不肯起来。');
+    await present({who:'nikon',cards:S.words,lack:true,label:'坟前',lines:[
+      {t:'保罗说过，主要从天降临。'},
+      {t:'可是她……她已经在地里了。'},
+      {t:'主来的那天，她会不会错过？',key:{need:['__none'],ok:[],wrong:'这句话回答不了他。保罗没有教过这件事。'}}]});
+    await n('你手里没有话。你只能在坟前陪他坐着，一直坐到太阳升起来。');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    place('雅典','');
+    await n('雅典。一个从马其顿来的商人，在市场上认出了保罗。');
+    for(const l of macedonianNews()) await s('traveler',l);
+    if(!S.flags.agoraOk) await s('paul','（他低下头）他们说我是骗子……这件事，我得亲口说清楚。');
+    else await s('paul','（他的眼眶湿了）');
+    await n('保罗一天比一天着急。（试着往北，回帖撒罗尼迦去。）');
+    await mapLeg('l4a',{});
+    await n('消息从北边传来：帖撒罗尼迦那边的人还盯着，耶孙的保状还在。这条路走不通。');
+    await n('（再试一次。）');
+    await mapLeg('l4b',{});
+    await n('又被拦住了。');
+    await v('帖前 2:17-18','弟兄们，我们暂时与你们离别，是面目离别，心里却不离别；我们极力地想法子，很愿意见你们的面。所以我们有意到你们那里；我保罗有一两次要去，只是撒但阻挡了我们。');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    place('雅典','夜里');
+    await n('保罗回不去。他能做的，只有祷告。');
+    await v('帖前 3:10','我们昼夜切切地祈求，要见你们的面，补满你们信心的不足。');
+    await n('（按住一个名字，为他祷告。）');
+    await pray();
+    place('雅典','');
+    await s('paul','（他坐在雅典满城的偶像中间）我不能再忍了。');
+    await v('帖前 3:1-2','我们既不能再忍，就愿意独自等在雅典，打发我们的兄弟在基督福音上作神执事的提摩太前去，坚固你们，并在你们所信的道上劝慰你们，');
+    await choose([{t:'打发提摩太去',v:1,sub:'自己留下，独自一人'}]);
+    await n('提摩太往北去了。保罗一个人往西，去哥林多。');
+  });
+  await seg(async()=>{
+    setWho('保罗');
+    await findPlace('corinth',['corinth','megara','eleusis','thebes'],'保罗往西去亚该亚省的首府。','athens');
+    await mapLeg('l4',{stops:[{pl:'eleusis'},{pl:'megara',ev:async api=>{
+      await n('过了墨伽拉，往地峡去有两条路。');
+      const k=await choose([{t:'沿着海边的悬崖路',v:'cliff',sub:'近，可是路窄，下面就是海'},{t:'绕内陆的山路',v:'hill',sub:'安稳，多走一天'}],'走哪一条？');
+      if(k==='cliff') await n('路窄得只容一个人，脚下就是浪。保罗贴着岩壁，一步一步走过去。');
+      else { await n('山路绕了很远，可是安稳。'); api.addDays(1); }
+    }},{pl:'isthmus'},{pl:'corinth',ev:async()=>{ await n('在哥林多，他遇见了亚居拉和百基拉——也是做帐棚的。'); }}]});
+    await horizon('帖前 3:13','好使你们当我们主耶稣同他众圣徒来的时候，在我们父神面前，心里坚固，成为圣洁，无可责备。');
+  });
 }
 
 async function ch5(){
-  S.ch=5; setWho('亚里达古');
-  place('帖撒罗尼迦','耶孙家');
-  await n('黄昏，耶孙家门口站着一个风尘仆仆的年轻人。');
-  await s('kalip','提摩太！是提摩太！');
-  await s('timothy','平安！保罗打发我来。他自己来不了，可是他一天也没有忘记你们。');
-  await v('帖前 3:2','打发我们的兄弟在基督福音上作神执事的提摩太前去，坚固你们，并在你们所信的道上劝慰你们，');
-  place('作坊','');
-  await s('kalip','师傅，我缝的腰带，你看！等主来那天，你系着它，跟在我后面跑。');
-  await stitch(4,'和加力普一起缝');
-  place('回家的路上','夜');
-  await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
-  await n('他冲你挥挥手，拐进了自家的巷子。那是你最后一次看见他醒着。');
-  place('克律西家','清晨');
-  await n('天还没亮，克律西的哭声把整条街都叫醒了。加力普睡了，早上没有再醒过来。');
-  if(S.flags.guild){ await n('公会派人来，说要按规矩在坟前为守护神奠酒。你谢绝了，由弟兄们自己埋葬他。'); }
-  else await n('公会不肯收尸——加力普跟着你离开了公会。城里的规矩是：没有人埋，就只能丢在城外。');
-  await n('弟兄们来了。耶孙、西公都、提摩太，还有你。你们自己挖坟，自己抬他。掘墓的人说，钱已经有人付过了。问是谁，他只是摇头。');
-  await s('neighbor','（她把一块蜡板递给克律西）我儿子死的时候，人家写给我的。');
-  await say(null,'「我为你们哭泣，正如我为自己的孩子哭泣……可是面对这样的事，谁也无能为力。所以，你们彼此安慰吧。」','letter');
-  await s('chrysis','彼此安慰……拿什么安慰？');
-  await n('你手里还是没有话。');
-  await s('timothy','我来收拾你们的问题，带去问保罗。');
-  await n('提摩太把问题一个一个装进皮袋：「睡了的人会怎样？」「主的日子什么时候来？」「不做工的人怎么办？」「旧日的情欲，怎样胜过？」');
-  setWho('提摩太');
-  await mapLeg('l5',{stops:[
-    {pl:'pydna'},{pl:'tempe'},
-    {pl:'larissa',ev:async()=>{ await s('traveler','你从帖撒罗尼迦来？听说那里有一群人，不拜神像，只等一位从天上来的王。连我们这里都传开了。'); await v('帖前 1:8','因为主的道从你们那里已经传扬出来，你们向神的信心不但在马其顿和亚该亚，就是在各处也都传开了，所以不用我们说什么话。'); }},
-    {pl:'thermopylae'},{pl:'thebes'},{pl:'isthmus'},{pl:'corinth'}
-  ]});
-  setWho('保罗');
-  place('哥林多','亚居拉的作坊');
-  await n('那一天，提摩太跑进了亚居拉的作坊。');
-  await v('帖前 3:9-10','我们在神面前，因着你们甚是喜乐，为这一切喜乐，可用何等的感谢为你们报答神呢？我们昼夜切切地祈求，要见你们的面，补满你们信心的不足。');
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('帖撒罗尼迦','耶孙家');
+    await n('黄昏，耶孙家门口站着一个风尘仆仆的年轻人。');
+    await s('kalip','提摩太！是提摩太！');
+    await s('timothy','平安！保罗打发我来。他自己来不了，可是他一天也没有忘记你们。他在雅典，昼夜为你们祷告。');
+    await v('帖前 3:2','打发我们的兄弟在基督福音上作神执事的提摩太前去，坚固你们，并在你们所信的道上劝慰你们，');
+    const ps=Object.keys(S.prayed||{}).filter(k=>ECHO[k]);
+    if(ps.length){ await n('那些日子，城里发生了一些小事。'); for(const k of ps) await say(null,ECHO[k],'letter'); await n('后来你们才知道，那段日子，正是保罗在雅典为你们祷告的时候。'); }
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('作坊','');
+    await s('kalip','师傅，我缝的腰带，你看！等主来那天，你系着它，跟在我后面跑。');
+    await stitch(4,'和加力普一起缝');
+    place('回家的路上','夜');
+    await s('kalip','等主来了，我第一个跑去迎接，谁也别跟我抢！');
+    await n('他冲你挥挥手，拐进了自家的巷子。那是你最后一次看见他醒着。');
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('克律西家','清晨');
+    await n('天还没亮，克律西的哭声把整条街都叫醒了。加力普睡了，早上没有再醒过来。');
+    if(S.flags.guild) await n('公会派人来，说要按规矩在坟前为守护神奠酒。你谢绝了，由弟兄们自己埋葬他。');
+    else await n('公会不肯收尸——加力普跟着你离开了公会。城里的规矩是：没有人埋，就只能丢在城外。');
+    await n('弟兄们来了。耶孙、西公都、提摩太，还有你。你们自己挖坟，自己抬他。掘墓的人说，钱已经有人付过了。问是谁，他只是摇头。');
+    await s('neighbor','（她把一块蜡板递给克律西）我儿子死的时候，人家写给我的。');
+    await say(null,'「我为你们哭泣，正如我为自己的孩子哭泣……可是面对这样的事，谁也无能为力。所以，你们彼此安慰吧。」','letter');
+    await s('chrysis','彼此安慰……拿什么安慰？');
+    await n('你手里还是没有话。');
+    await s('timothy','我把你们的问题收好，带去问保罗。');
+    await n('提摩太把问题一个一个装进皮袋：「睡了的人会怎样？」「主的日子什么时候来？」「不做工的人怎么办？」「旧日的情欲，怎样胜过？」');
+  });
+  await seg(async()=>{
+    setWho('提摩太');
+    await findPlace('corinth',['corinth','athens','larissa','thermopylae'],'保罗已经离开雅典了。提摩太要把问题带去给他——保罗现在在哪里？','thess');
+    await mapLeg('l5',{stops:[
+      {pl:'pydna'},{pl:'tempe'},
+      {pl:'larissa',ev:async()=>{ await s('traveler','你从帖撒罗尼迦来？听说那里有一群人，不拜神像，只等一位从天上来的王。连我们这里都传开了。'); await v('帖前 1:8','因为主的道从你们那里已经传扬出来，你们向神的信心不但在马其顿和亚该亚，就是在各处也都传开了，所以不用我们说什么话。'); }},
+      {pl:'thermopylae'},{pl:'thebes'},{pl:'isthmus'},{pl:'corinth'}
+    ]});
+    setWho('保罗');
+    place('哥林多','亚居拉的作坊');
+    await n('那一天，提摩太跑进了亚居拉的作坊。');
+    await v('帖前 3:9-10','我们在神面前，因着你们甚是喜乐，为这一切喜乐，可用何等的感谢为你们报答神呢？我们昼夜切切地祈求，要见你们的面，补满你们信心的不足。');
+  });
 }
 
 async function ch6(){
-  S.ch=6; setWho('保罗');
-  place('哥林多','口述书信');
-  await s('paul','亚挪尼摩，接着写。前面的话写完了，现在回答他们的问题。');
-  await n('（把皮袋里的每个问题，配到信里回答它的那一段。）');
-  const Qs=[
-    {k:'holy',q:'「旧日的情欲，怎样胜过？」',p:'4:3-8',ref:'帖前 4:3、7-8',t:'神的旨意就是要你们成为圣洁，远避淫行……神召我们，本不是要我们沾染污秽，乃是要我们成为圣洁。所以，那弃绝的，不是弃绝人，乃是弃绝那赐圣灵给你们的神。'},
-    {k:'work',q:'「不做工的人怎么办？」',p:'4:9-12',ref:'帖前 4:9、11',t:'论到弟兄们相爱，不用人写信给你们，因为你们自己蒙了神的教训，叫你们彼此相爱……又要立志做安静人，办自己的事，亲手做工，正如我们从前所吩咐你们的。'},
-    {k:'asleep',q:'「睡了的人会怎样？」',p:'4:13-18',ref:'帖前 4:13-14',t:'论到睡了的人，我们不愿意弟兄们不知道，恐怕你们忧伤，像那些没有指望的人一样。我们若信耶稣死而复活了，那已经在耶稣里睡了的人，神也必将他与耶稣一同带来。'},
-    {k:'times',q:'「主的日子什么时候来？」',p:'5:1-11',ref:'帖前 5:1-2、5',t:'弟兄们，论到时候、日期，不用写信给你们，因为你们自己明明晓得，主的日子来到，好像夜间的贼一样……你们都是光明之子，都是白昼之子。'}
-  ];
-  const paras=[['4:3-8','成为圣洁'],['4:9-12','弟兄相爱，亲手做工'],['4:13-18','论到睡了的人'],['5:1-11','论到时候、日期']];
-  const done={};
-  timerStart('match','配对书信段落');
-  while(Object.keys(done).length<Qs.length){
-    const q=await choose(Qs.filter(x=>!done[x.k]).map(x=>({t:x.q,v:x.k})),'从皮袋里拿出一个问题：');
-    const item=Qs.find(x=>x.k===q);
-    const p=AUTO?item.p:await choose(paras.map(([r,t])=>({t:`${r}　${t}`+(timerExpired()&&r===item.p?'　← 提示':''),v:r})),`${item.q}——信里哪一段回答它？`);
-    if(p===item.p){ done[q]=1; await v(item.ref,item.t); }
-    else await n('不是这一段。再想想。');
-  }
-  timerStop();
-  await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
-  await v('帖前 5:27','我指着主嘱咐你们，要把这信念给众弟兄听。');
-  await s('paul','克莱翁，你替我把它送去。');
-  setWho('克莱翁');
-  place('哥林多','启程');
-  await n('你把信卷好，用油布包了三层，贴身收着。');
-  const route=await choose([{t:'走陆路',v:'l6l',sub:'约 520 公里，大约二十天。慢，但不靠天。'},{t:'走海路',v:'l6s',sub:'约 560 公里，顺风六七天。要看季节。'}],'从哪条路去？');
-  let storm=false;
-  if(route==='l6s'){
-    const season=await choose([{t:'现在是夏天',v:'s',sub:'航海的好季节'},{t:'现在是深秋',v:'a',sub:'快封海了，风浪大'}],'现在是什么季节？');
-    storm=season==='a';
-    if(storm) await n('船长说：「再过几个礼拜就封海了。这是今年最后几班船。」');
-    await mapLeg('l6s',{storm,stops:[{pl:'cenchreae'},{pl:'sounion'},{at:[24.8,38.6],ev:async()=>{ if(storm){ await n('一场大风暴。船在浪里颠了两天两夜。'); await n('你抱着那卷信，心想：保罗走过这么多海路，他是怎样撑过来的？'); } else await n('海上风平浪静。'); }},{pl:'skiathos'},{pl:'thess'}]});
-  } else {
-    await mapLeg('l6l',{stops:[{pl:'isthmus'},{pl:'thebes'},{pl:'thermopylae',ev:async()=>{ await n('山路上冲出几个强盗，搜走了你的钱袋。'); await n('他们抖开油布，看了一眼：「一卷皮子？」随手扔回给你。'); await n('强盗只要钱，不要一封信。'); }},{pl:'larissa'},{pl:'tempe',ev:async()=>{ await n('彼纽斯河涨水了。你在河边等了一天，才找到渡船。'); }},{pl:'thess'}]});
-  }
-  place('帖撒罗尼迦','城门');
-  await n('帖撒罗尼迦的城门。你摸了摸怀里，信还在。');
+  await seg(async()=>{
+    setWho('保罗');
+    place('哥林多','口述书信');
+    if(!S.flags.agoraOk||S.flags.flatter){
+      await s('paul','亚挪尼摩，先写这一段。城里有人说我是骗子，他们心里还有疑问。');
+      await v('帖前 2:5-6','因为我们从来没有用过谄媚的话，这是你们知道的；也没有藏着贪心，这是神可以作见证的。我们作基督的使徒，虽然可以叫人尊重，却没有向你们或向别人求荣耀。');
+    } else {
+      await s('paul','亚挪尼摩，写上：我们不用说什么话，各处的人都在传他们的信心。');
+      await v('帖前 1:8-9','……你们向神的信心不但在马其顿和亚该亚，就是在各处也都传开了，所以不用我们说什么话。因为他们自己已经报明我们是怎样进到你们那里，你们是怎样离弃偶像，归向神……');
+    }
+    await s('paul','接着写。现在回答他们的问题。');
+    await n('（把皮袋里的每个问题，配到信里回答它的那一段。）');
+    const Qs=[
+      {k:'holy',q:'「旧日的情欲，怎样胜过？」',p:'4:3-8',ref:'帖前 4:3、7-8',t:'神的旨意就是要你们成为圣洁，远避淫行……神召我们，本不是要我们沾染污秽，乃是要我们成为圣洁。所以，那弃绝的，不是弃绝人，乃是弃绝那赐圣灵给你们的神。'},
+      {k:'work',q:'「不做工的人怎么办？」',p:'4:9-12',ref:'帖前 4:9、11',t:'论到弟兄们相爱，不用人写信给你们，因为你们自己蒙了神的教训，叫你们彼此相爱……又要立志做安静人，办自己的事，亲手做工，正如我们从前所吩咐你们的。'},
+      {k:'asleep',q:'「睡了的人会怎样？」',p:'4:13-18',ref:'帖前 4:13-14',t:'论到睡了的人，我们不愿意弟兄们不知道，恐怕你们忧伤，像那些没有指望的人一样。我们若信耶稣死而复活了，那已经在耶稣里睡了的人，神也必将他与耶稣一同带来。'},
+      {k:'times',q:'「主的日子什么时候来？」',p:'5:1-11',ref:'帖前 5:1-2、5',t:'弟兄们，论到时候、日期，不用写信给你们，因为你们自己明明晓得，主的日子来到，好像夜间的贼一样……你们都是光明之子，都是白昼之子。'}
+    ];
+    const paras=[['4:3-8','成为圣洁'],['4:9-12','弟兄相爱，亲手做工'],['4:13-18','论到睡了的人'],['5:1-11','论到时候、日期']];
+    const done={};
+    timerStart('match','配对书信段落');
+    while(Object.keys(done).length<Qs.length){
+      const q=await choose(Qs.filter(x=>!done[x.k]).map(x=>({t:x.q,v:x.k})),'从皮袋里拿出一个问题：');
+      const item=Qs.find(x=>x.k===q);
+      const p=AUTO?item.p:await choose(paras.map(([r,tt])=>({t:`${r}　${tt}`+(timerExpired()&&r===item.p?'　← 提示':''),v:r})),`${item.q}——信里哪一段回答它？`);
+      if(p===item.p){ done[q]=1; await v(item.ref,item.t); }
+      else await n('不是这一段。再想想。');
+    }
+    timerStop();
+    await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
+    await v('帖前 5:27','我指着主嘱咐你们，要把这信念给众弟兄听。');
+    await s('paul','克莱翁，你替我把它送去。');
+  });
+  await seg(async()=>{
+    setWho('克莱翁');
+    place('哥林多','启程');
+    await n('你把信卷好，用油布包了三层，贴身收着。');
+    await findPlace('thess',['thess','philippi','berea','larissa'],'这封信要送到哪一座城？','corinth');
+    const route=await choose([{t:'走陆路',v:'l6l',sub:'约 520 公里，大约二十天。慢，但不靠天。'},{t:'走海路',v:'l6s',sub:'约 560 公里，顺风六七天。要看季节。'}],'从哪条路去？');
+    if(route==='l6s'){
+      const season=await choose([{t:'现在是夏天',v:'s',sub:'航海的好季节'},{t:'现在是深秋',v:'a',sub:'快封海了，风浪大'}],'现在是什么季节？');
+      const storm=season==='a';
+      if(storm) await n('船长说：「再过几个礼拜就封海了。这是今年最后几班船。」');
+      await mapLeg('l6s',{storm,stops:[{pl:'cenchreae'},{pl:'sounion'},{at:[24.8,38.6],ev:async api=>{ if(storm){ await n('一场大风暴。船在浪里颠了两天两夜。'); await n('你抱着那卷信，心想：保罗走过这么多海路，他是怎样撑过来的？'); api.addDays(2); } else await n('海上风平浪静。'); }},{pl:'skiathos'},{pl:'thess'}]});
+    } else {
+      await mapLeg('l6l',{stops:[{pl:'isthmus'},{pl:'thebes'},{pl:'thermopylae',ev:async()=>{ await n('山路上冲出几个强盗，搜走了你的钱袋。'); await n('他们抖开油布，看了一眼：「一卷皮子？」随手扔回给你。'); await n('强盗只要钱，不要一封信。'); }},
+        {pl:'larissa',ev:async api=>{
+          await n('过了拉里萨，往北有两条路。');
+          const k=await choose([{t:'走坦佩峡谷',v:'tempe',sub:'近，可是河水可能涨'},{t:'绕奥林匹斯山西边的山路',v:'west',sub:'安稳，多走两天'}],'走哪一条？');
+          S.flags.detour=k==='west';
+          if(k==='west'){ api.alt([[22.42,39.64],[22.10,39.90],[22.30,40.20]],true); api.addDays(2); await n('山路很长，可是不用涉水。'); }
+        }},
+        {pl:'tempe',ev:async api=>{ if(S.flags.detour) return; await n('彼纽斯河涨水了。你在河边等了一天，才找到渡船。'); api.addDays(1); }},{pl:'thess'}]});
+    }
+    place('帖撒罗尼迦','城门');
+    await n('帖撒罗尼迦的城门。你摸了摸怀里，信还在。');
+  });
 }
 
 async function ch7(){
-  S.ch=7; setWho('亚里达古');
-  place('耶孙家','夜 · 念信');
-  await n('那一夜，耶孙家挤满了人。一个从哥林多来的弟兄，把一卷信交给耶孙。');
-  await s('kleon','保罗、西拉、提摩太写信给你们。');
-  await v('帖前 1:2-3','我们为你们众人常常感谢神，祷告的时候提到你们，在神我们的父面前，不住地记念你们因信心所做的工夫，因爱心所受的劳苦，因盼望我们主耶稣基督所存的忍耐。');
-  await v('帖前 4:13-14','论到睡了的人，我们不愿意弟兄们不知道，恐怕你们忧伤，像那些没有指望的人一样。我们若信耶稣死而复活了，那已经在耶稣里睡了的人，神也必将他与耶稣一同带来。');
-  await learn('asleep');
-  await v('帖前 4:16','因为主必亲自从天降临，有呼叫的声音和天使长的声音，又有神的号吹响；那在基督里死了的人必先复活。');
-  await n('房间里有人笑出了声，又哭了。');
-  await s('chrysis','他说过的……「等主来了，我第一个跑去迎接，谁也别跟我抢。」');
-  await n('谁也没有跟他抢。他真的是第一个。');
-  await v('帖前 4:17-18','以后我们这活着还存留的人必和他们一同被提到云里，在空中与主相遇。这样，我们就要和主永远同在。所以，你们当用这些话彼此劝慰。');
-  await learn('these');
-  await v('帖前 4:6','不要一个人在这事上越分，欺负他的弟兄；因为这一类的事，主必报应，正如我预先对你们说过，又切切嘱咐你们的。');
-  await learn('avenge');
-  await v('帖前 5:5','你们都是光明之子，都是白昼之子；我们不是属黑夜的，也不是属幽暗的。');
-  await learn('light');
-  await v('帖前 5:8-10','但我们既然属乎白昼，就应当谨守，把信和爱当做护心镜遮胸，把得救的盼望当做头盔戴上。因为神不是预定我们受刑，乃是预定我们借着我们主耶稣基督得救。他替我们死，叫我们无论醒着，睡着，都与他同活。');
-  await learn('live');
-  await v('帖前 5:12','弟兄们，我们劝你们敬重那在你们中间劳苦的人，就是在主里面治理你们、劝戒你们的；');
-  await learn('honor');
-  await n('信念完了。可是有几个人今晚没有来。');
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('耶孙家','夜 · 念信');
+    await n('那一夜，耶孙家挤满了人。一个从哥林多来的弟兄，把一卷信交给耶孙。');
+    await s('kleon','保罗、西拉、提摩太写信给你们。');
+    await v('帖前 1:2-3','我们为你们众人常常感谢神，祷告的时候提到你们，在神我们的父面前，不住地记念你们因信心所做的工夫，因爱心所受的劳苦，因盼望我们主耶稣基督所存的忍耐。');
+    await v('帖前 4:13-14','论到睡了的人，我们不愿意弟兄们不知道，恐怕你们忧伤，像那些没有指望的人一样。我们若信耶稣死而复活了，那已经在耶稣里睡了的人，神也必将他与耶稣一同带来。');
+    await learn('asleep');
+    await v('帖前 4:16','因为主必亲自从天降临，有呼叫的声音和天使长的声音，又有神的号吹响；那在基督里死了的人必先复活。');
+    await n('房间里有人笑出了声，又哭了。');
+    await s('chrysis','他说过的……「等主来了，我第一个跑去迎接，谁也别跟我抢。」');
+    await n('谁也没有跟他抢。他真的是第一个。');
+    await v('帖前 4:17-18','以后我们这活着还存留的人必和他们一同被提到云里，在空中与主相遇。这样，我们就要和主永远同在。所以，你们当用这些话彼此劝慰。');
+    await learn('these');
+    await v('帖前 4:6','不要一个人在这事上越分，欺负他的弟兄；因为这一类的事，主必报应，正如我预先对你们说过，又切切嘱咐你们的。');
+    await learn('avenge');
+    await v('帖前 5:5','你们都是光明之子，都是白昼之子；我们不是属黑夜的，也不是属幽暗的。');
+    await learn('light');
+    await v('帖前 5:8-10','但我们既然属乎白昼，就应当谨守，把信和爱当做护心镜遮胸，把得救的盼望当做头盔戴上。因为神不是预定我们受刑，乃是预定我们借着我们主耶稣基督得救。他替我们死，叫我们无论醒着，睡着，都与他同活。');
+    await learn('live');
+    await v('帖前 5:12','弟兄们，我们劝你们敬重那在你们中间劳苦的人，就是在主里面治理你们、劝戒你们的；');
+    await learn('honor');
+    await n('信念完了。可是有几个人今晚没有来。');
+  });
   const M={
     chrysis:{pl:'城外坟地',lines:[{t:'加力普说过，要第一个跑出去迎接。'},{t:'可是他躺在这里。'},{t:'彼此安慰……拿什么安慰？',key:{need:['these','asleep'],ok:[['chrysis','……「和主永远同在」。（她握着那条没缝完的腰带）他会第一个。']]}}]},
     nikon:{pl:'夜里的市场',lines:[{t:'我天天在这里喊：主快来吧！'},{t:'我不是不想做工。我只是怕……'},{t:'怕埃拉等不到那一天。',key:{need:['asleep','live'],ok:[['nikon','（他捂住了脸）……她没有错过。她跟主一同回来。']]}},{t:'那我……还要不要在这里喊？',key:{need:['work','thief','light'],ok:[['nikon','明天，我把布铺开起来。']]}}]},
     agathe:{pl:'叔父家后门',lines:[{t:'那晚的事……城里没有人觉得有什么不对。'},{t:'我只是个婢女。'},{t:'主……也看见了吗？',key:{need:['avenge'],ok:[['agathe','（她抬起头）……主也看见了。']]}}]},
     secundus:{pl:'耶孙家的角落',lines:[{t:'我没事。'},{t:'这几个月，我只是擦擦灯，送送生皮。'},{t:'没有人会记得这些。',key:{need:['honor'],ok:[['secundus','……保罗信里，写到了我们这样的人？']]}}]}
   };
-  let left=Object.keys(M);
-  while(left.length){
-    const who=await choose(left.map(k=>({t:'去找'+nm(k),sub:M[k].pl,v:k})),'带着这些话，去找谁？');
-    place(M[who].pl,nm(who));
-    const ok=await present({who,cards:S.words,lines:M[who].lines});
-    if(ok) S.cared[who]=1;
-    left=left.filter(k=>k!==who);
+  for(const who of ['chrysis','nikon','agathe','secundus']){
+    await seg(async()=>{
+      setWho('亚里达古');
+      place(M[who].pl,nm(who));
+      await n(`你带着信里的话，去找${nm(who)}。`);
+      const ok=await present({who,cards:S.words,lines:M[who].lines,label:'安慰'+nm(who)});
+      if(ok) S.cared[who]=1;
+    });
   }
-  place('帖撒罗尼迦','总督驾临前夜');
-  await n('明天，罗马总督要驾临帖撒罗尼迦。全城张灯结彩，街口的石柱上刷着大字：「平安稳妥」。');
-  await v('帖前 5:2-3','因为你们自己明明晓得，主的日子来到，好像夜间的贼一样。人正说平安稳妥的时候，灾祸忽然临到他们，如同产难临到怀胎的妇人一样，他们绝不能逃脱。');
-  await v('帖前 5:6','所以，我们不要睡觉，像别人一样，总要警醒谨守。');
-  await n('（守夜：按住「祷告」添油；困了就点「醒一醒」；有人敲门就点门；暗处的声音靠近时，按住「头盔」。）');
-  const w=await watch();
-  place('西门','黎明');
-  await n('天亮了。全城的人都出了西门，去迎接驾临的总督，一路喊着：「平安稳妥！」');
-  await n('教会的人站在门边，没有跟着去。他们转过身，望着东方。');
-  if(w.helped) await n(`昨夜你开门帮了 ${w.helped} 个人。`);
-  await horizon('帖前 4:16-17','因为主必亲自从天降临，有呼叫的声音和天使长的声音，又有神的号吹响；那在基督里死了的人必先复活。以后我们这活着还存留的人必和他们一同被提到云里，在空中与主相遇。这样，我们就要和主永远同在。');
-  await n('在那幅图景里，有一个年轻人跑在最前面。谁也没有跟他抢。');
-  place('西门','黎明');
-  await n('东方只是开始发白。保罗没有回来。主也还没有来。');
-  await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('帖撒罗尼迦','总督驾临前夜');
+    await n('明天，罗马总督要驾临帖撒罗尼迦。全城张灯结彩，街口的石柱上刷着大字：「平安稳妥」。');
+    await v('帖前 5:2-3','因为你们自己明明晓得，主的日子来到，好像夜间的贼一样。人正说平安稳妥的时候，灾祸忽然临到他们，如同产难临到怀胎的妇人一样，他们绝不能逃脱。');
+    await v('帖前 5:6','所以，我们不要睡觉，像别人一样，总要警醒谨守。');
+    await n('（守夜：按住「祷告」添油；困了就点「醒一醒」；有人敲门就点门；暗处的声音靠近时，按住「头盔」。）');
+    const w=await watch(); S.flags.helped=w.helped;
+  });
+  await seg(async()=>{
+    setWho('亚里达古');
+    place('西门','黎明');
+    await n('天亮了。全城的人都出了西门，去迎接驾临的总督，一路喊着：「平安稳妥！」');
+    await n('教会的人站在门边，没有跟着去。他们转过身，望着东方。');
+    if(S.flags.helped) await n(`昨夜你开门帮了 ${S.flags.helped} 个人。`);
+    await horizon('帖前 4:16-17','因为主必亲自从天降临，有呼叫的声音和天使长的声音，又有神的号吹响；那在基督里死了的人必先复活。以后我们这活着还存留的人必和他们一同被提到云里，在空中与主相遇。这样，我们就要和主永远同在。');
+    await n('在那幅图景里，有一个年轻人跑在最前面。谁也没有跟他抢。');
+    place('西门','黎明');
+    await n('东方只是开始发白。保罗没有回来。主也还没有来。');
+    await v('帖前 5:23-24','愿赐平安的神亲自使你们全然成圣。又愿你们的灵与魂与身子得蒙保守，在我们主耶稣基督降临的时候，完全无可指摘。那召你们的本是信实的，他必成就这事。');
+  });
 }
 
 /* ════════ 流程与目录 ════════ */
@@ -1155,25 +1414,32 @@ const CHAPTERS=[
 ];
 function renderMenu(){
   const done=jget('t1v2done')||{};
-  $('#chlist').innerHTML=CHAPTERS.map((c,i)=>`<button class="chb${done[i]?' done':''}" data-i="${i}"><span><b>${CHN[i]}</b><small>${c.who} · ${c.d}</small></span><span class="r">约 ${c.m} 分钟${c.map?'<br>地图 '+c.map:''}</span></button>`).join('');
-  $('#chlist').querySelectorAll('.chb').forEach(b=>b.onclick=()=>startAt(+b.dataset.i));
+  const run=jget('t1v2run');
+  const resumeBtn=run&&run.inProgress&&CHAPTERS[run.ch]?`<button class="chb" id="bresume" style="border-color:var(--amber)"><span><b>继续上次的进度</b><small>${CHN[run.ch]} · 从第 ${(run.cp||0)+1} 段接着玩</small></span><span class="r">▶</span></button>`:'';
+  $('#chlist').innerHTML=resumeBtn+CHAPTERS.map((c,i)=>`<button class="chb${done[i]?' done':''}" data-i="${i}"><span><b>${CHN[i]}</b><small>${c.who} · ${c.d}</small></span><span class="r">约 ${c.m} 分钟${c.map?'<br>地图 '+c.map:''}</span></button>`).join('');
+  $('#chlist').querySelectorAll('.chb[data-i]').forEach(b=>b.onclick=()=>startAt(+b.dataset.i));
+  if($('#bresume')) $('#bresume').onclick=()=>startAt(run.ch,true);
   const sb=$('#setbox'); sb.innerHTML='';
   const opt=(t,on,fn)=>{ const b=document.createElement('button'); b.textContent=t; if(on) b.className='on'; b.onclick=()=>{ fn(); saveSet(); renderMenu(); }; sb.appendChild(b); };
   opt('轻度',SET.diff==='light',()=>SET.diff='light');
   opt('中度',SET.diff==='medium',()=>SET.diff='medium');
   opt('不计时',SET.untimed,()=>SET.untimed=!SET.untimed);
   opt('大字体',SET.big,()=>SET.big=!SET.big);
+  opt(TTS.ok?'朗读':'朗读（此设备不支持）',SET.tts&&TTS.ok,()=>{ SET.tts=TTS.ok&&!SET.tts; if(SET.tts) speak('朗读已打开。'); });
 }
 function openMenu(){ renderMenu(); ['#title','#castpage','#ending'].forEach(q=>$(q).hidden=true); $('#menu').hidden=false; }
-async function startAt(i){
+async function startAt(i,resume){
   $('#menu').hidden=true;
   const run=jget('t1v2run');
-  S=(run&&run.ch===i-1&&run.next===i)?run:fresh();
+  if(resume&&run){ S=run; i=run.ch; S.resume=run.cp||0; }
+  else { S=(run&&run.ch===i-1&&run.next===i&&!run.inProgress)?run:fresh(); S.resume=0; }
+  S.geo=S.geo||{ok:0,total:0}; S.prayed=S.prayed||{}; S.times=S.times||[];
   for(let k=i;k<CHAPTERS.length;k++){
-    S.ch=k; hud();
+    if(k!==i||!resume){ S.resume=0; S.cp=0; }
+    S.ch=k; S.inProgress=true; hud(); SEGI=0; saveRun();
     await CHAPTERS[k].f();
     const done=jget('t1v2done')||{}; done[k]=1; jset('t1v2done',done);
-    S.next=k+1; saveRun();
+    S.next=k+1; S.inProgress=false; S.cp=0; S.resume=0; saveRun();
     const tt=timesText(k); if(tt) await say(null,'这一章各段的用时：\n'+tt,'letter');
     if(k===CHAPTERS.length-1) break;
     const c=await choose([{t:'下一章：'+CHN[k+1],v:1},{t:'回到目录',v:0}],`${CHN[k]}　完`);
@@ -1187,6 +1453,7 @@ function ending(){
   el.innerHTML=`<div class="bigflame"></div><h1 style="font-size:28px">那召你们的本是信实的</h1>
   <p>这一路，你走了约 ${Math.round(S.km)} 公里，到过 ${Object.keys(S.atlas).length} 个地方。</p>
   <p>今夜带着信里的话去找的人：${names.length?names.join('、'):'还没有'}。</p>
+  <p>认地方：一次就找对 ${S.geo?S.geo.ok:0} / ${S.geo?S.geo.total:0} 处。保罗在雅典为 ${Object.keys(S.prayed||{}).length} 个人祷告。</p>
   <p style="color:var(--dim)">「我们的盼望和喜乐，并所夸的冠冕是什么呢？……你们就是我们的荣耀，我们的喜乐。」（帖前 2:19-20）</p>
   <p>保罗没有回来。患难也没有过去。东方开始发白。</p>
   <div class="verse">那召你们的本是信实的，他必成就这事。<br><small>——帖撒罗尼迦前书 5:24</small></div>
@@ -1202,7 +1469,7 @@ document.addEventListener('keydown',e=>{
   if(e.code==='Space'||e.key==='Enter'){ e.preventDefault(); advance(); }
 });
 window.addEventListener('resize',()=>{ if(SN) draw(); });
-$('#bmenu').onclick=()=>{ if(confirm('回到目录？这一章的进度会从头开始。')) { location.hash='menu'; location.reload(); } };
+$('#bmenu').onclick=()=>{ if(confirm('回到目录？下次可以从最近的存档点接着玩。')) { try{ speechSynthesis.cancel(); }catch(e){} location.hash='menu'; location.reload(); } };
 $('#bstart').onclick=()=>{ $('#title').hidden=true; $('#castpage').hidden=false; };
 $('#bcast').onclick=openMenu;
 $('#btimes').onclick=showTimes;
