@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>创意宣教第四章课堂笔记</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@500;700&family=Noto+Sans+SC:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* 版式：一条笔记正文栏，宽屏时左侧固定目录；提示语以「可复制卡片」呈现 */
+:root{
+  --bg:#f5f6f2; --paper:#ffffff; --fg:#1e2421; --muted:#5d6661; --line:#d9ddd5;
+  --ink:#2b4c7e;          /* 墨蓝：标题、链接、步骤 */
+  --olive:#5f7330;        /* 橄榄：神学、经文 */
+  --rose:#9a3f5f;         /* 玫红：提醒、陷阱 */
+  --codebg:#eef0ea;
+  --serif:"Noto Serif SC","Songti SC","SimSun",serif;
+  --sans:"Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121614; --paper:#1a1f1c; --fg:#e4e8e1; --muted:#9aa49d; --line:#2f3732;
+  --ink:#9db8e6; --olive:#aec27a; --rose:#e39ab4; --codebg:#232a26; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#121614; --paper:#1a1f1c; --fg:#e4e8e1; --muted:#9aa49d; --line:#2f3732;
+  --ink:#9db8e6; --olive:#aec27a; --rose:#e39ab4; --codebg:#232a26; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:16px;line-height:1.8;padding-inline:16px}
+.wrap{max-width:1080px;margin:0 auto;padding-block:32px 64px;display:grid;grid-template-columns:220px minmax(0,1fr);gap:40px}
+@media (max-width:860px){.wrap{grid-template-columns:minmax(0,1fr);gap:20px}}
+nav.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 20px);align-self:start;font-size:14px;line-height:1.6}
+@media (max-width:860px){nav.toc{position:static;border:1px solid var(--line);border-radius:8px;padding:12px 14px;background:var(--paper)}}
+nav.toc b{display:block;font-size:12px;letter-spacing:.15em;color:var(--muted);margin-bottom:8px;font-weight:500}
+nav.toc ol{margin:0;padding-left:1.3em;display:grid;gap:4px}
+nav.toc a{color:var(--fg);text-decoration:none}
+nav.toc a:hover,nav.toc a:focus-visible{color:var(--ink);text-decoration:underline}
+main{min-width:0;display:grid;gap:44px}
+section{display:grid;gap:14px;scroll-margin-top:16px}
+h1,h2,h3{font-family:var(--serif);font-weight:700;line-height:1.35;margin:0;text-wrap:balance}
+h1{font-size:clamp(30px,5vw,42px);color:var(--ink)}
+h2{font-size:clamp(22px,3.4vw,27px);color:var(--ink);padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:18.5px}
+p{margin:0;max-width:68ch}
+ul,ol{margin:0;padding-left:1.4em;display:grid;gap:6px;max-width:70ch}
+a{color:var(--ink)}
+.kicker{font-size:13px;letter-spacing:.2em;color:var(--olive);font-weight:500}
+.lede{font-size:17.5px;color:var(--muted);max-width:62ch}
+.meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:14px;color:var(--muted)}
+.meta span b{color:var(--fg);font-weight:500}
+.verse{font-family:var(--serif);border-left:3px solid var(--olive);padding:6px 14px;color:var(--fg);max-width:66ch}
+.verse cite{display:block;font-style:normal;font-family:var(--sans);font-size:13px;color:var(--olive)}
+.note{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:12px 16px;display:grid;gap:6px;max-width:72ch}
+.note.warn{border-color:color-mix(in srgb,var(--rose) 45%,var(--line))}
+.note.warn>b{color:var(--rose)}
+.note>b{color:var(--olive)}
+.tbl{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:14.5px;line-height:1.65}
+th,td{text-align:left;vertical-align:top;padding:9px 12px;border-bottom:1px solid var(--line)}
+th{font-weight:500;color:var(--muted);font-size:13px;letter-spacing:.05em;white-space:nowrap}
+td:first-child{white-space:nowrap;font-weight:500}
+.steps{list-style:none;padding:0;display:grid;gap:22px;counter-reset:s;max-width:none}
+.steps>li{counter-increment:s;display:grid;grid-template-columns:2.4em minmax(0,1fr);gap:4px 12px}
+.steps>li::before{content:counter(s);font-family:var(--serif);font-weight:700;font-size:20px;color:var(--paper);background:var(--ink);width:1.9em;height:1.9em;border-radius:50%;display:grid;place-items:center;grid-row:span 3}
+.steps>li>div{min-width:0;display:grid;gap:8px}
+.prompt{position:relative;background:var(--codebg);border-radius:8px;padding:12px 14px;font-family:var(--mono);font-size:13.5px;line-height:1.75;white-space:pre-wrap;word-break:break-word;max-width:72ch}
+.prompt::before{content:attr(data-who);display:block;font-family:var(--sans);font-size:12px;color:var(--muted);margin-bottom:4px}
+.copy{position:absolute;top:8px;right:8px;font:500 12px var(--sans);background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:2px 10px;cursor:pointer}
+.copy:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.pair>div{background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:4px;align-content:start}
+.pair>div b{color:var(--ink)}
+.small{font-size:14px;color:var(--muted)}
+code{font-family:var(--mono);font-size:.9em;background:var(--codebg);padding:1px 5px;border-radius:4px}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:14px}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="目录">
+  <b>本章目录</b>
+  <ol>
+    <li><a href="#goals">学习目标与课前准备</a></li>
+    <li><a href="#why">为什么用游戏教圣经</a></li>
+    <li><a href="#tools">认识工具</a></li>
+    <li><a href="#case">范例：以巴弗提的旅程</a></li>
+    <li><a href="#philosophy">设计哲学</a></li>
+    <li><a href="#method">七步工作流程</a></li>
+    <li><a href="#revisions">真实修订个案</a></li>
+    <li><a href="#prompts">提示语范本</a></li>
+    <li><a href="#pitfalls">与 AI 协作的守则</a></li>
+    <li><a href="#homework">课堂练习与作业</a></li>
+    <li><a href="#discuss">讨论题</a></li>
+  </ol>
+</nav>
+
+<main>
+<header style="display:grid;gap:12px">
+  <div class="kicker">创意宣教 · 第四章 · 范例课堂笔记</div>
+  <h1>用 AI 编程助手创作圣经游戏</h1>
+  <p class="lede">以腓立比书《以巴弗提的旅程》为例，学习怎样用 Claude Code 或 Codex，把一卷书信做成一个可以在手机上玩、可以带进家庭和小组的圣经游戏。</p>
+  <div class="meta">
+    <span><b>范例游戏</b>　腓立比书《以巴弗提的旅程》</span>
+    <span><b>建议课时</b>　两堂，每堂约 90 分钟</span>
+    <span><b>先修</b>　会用电脑和手机浏览器即可，不需要会写程序</span>
+  </div>
+</header>
+
+<section id="goals">
+  <h2>一、学习目标与课前准备</h2>
+  <h3>学完这一章，你能够：</h3>
+  <ol>
+    <li>说明「游戏机制本身就在传达神学」的意思，并举出腓立比书游戏的三个例子。</li>
+    <li>用「神学主导、AI 实作」的方式，和 Claude Code 或 Codex 一起完成一个圣经游戏的构思、查证、实作、修订。</li>
+    <li>为自己的项目写一份「项目记忆」文件（<code>CLAUDE.md</code> 或 <code>AGENTS.md</code>），让 AI 每次都遵守你定下的神学原则。</li>
+    <li>辨认与 AI 协作时常见的陷阱：顺从不提醒、引用未查证、把神学判断交给 AI。</li>
+  </ol>
+  <h3>课前准备</h3>
+  <ul>
+    <li>一个 GitHub 帐户，开一个空的仓库（例如 <code>bible-games</code>）。</li>
+    <li>Claude Code（网页版、桌面版或命令行皆可）或 OpenAI Codex 其中一种。</li>
+    <li>先玩一次范例游戏：<a href="https://claude.ai/artifact/5JverBaxJk7KSTcEezsmcb">以巴弗提的旅程</a>（作者需开放分享后，学生才打得开）。</li>
+    <li>选好你想做的一卷书信，读完全卷至少一次。</li>
+  </ul>
+</section>
+
+<section id="why">
+  <h2>二、为什么用游戏教圣经</h2>
+  <p>讲道和查经用的是语言，游戏还多了一样东西：<b>动作</b>。玩家用手按住、放开、躲开、抓住，这些动作本身就会教人。游戏设计里有一个说法叫「程序修辞」：规则和机制会说话，而且常常比文字说得更深。</p>
+  <p>举例：腓立比书游戏里，「凭自己反击」病菌，病菌反而分裂成两个；「用力挣脱」资历的蛛网，反而缠得更紧。玩家不必读一句解释，手已经学会了「靠自己是不行的」。</p>
+  <div class="note"><b>本章的核心问题</b>
+    <p>不是「怎样把经文放进游戏」，而是「<b>哪一个动作，能让玩家亲身经历这段经文的真理</b>」。</p></div>
+</section>
+
+<section id="tools">
+  <h2>三、认识工具：Claude Code 与 Codex</h2>
+  <p>两者都是「AI 编程助手」：你用平常的话告诉它要做什么，它会读你的项目、写程序、执行测试、存进版本库。你不必会写程序，但你要会<b>说清楚想要什么，并判断它做得对不对</b>。</p>
+  <div class="pair">
+    <div><b>Claude Code</b><span>Anthropic 出品。可在网页（claude.ai/code）、桌面应用或命令行使用。项目根目录的 <code>CLAUDE.md</code> 是它的「项目记忆」，每次对话开始都会读。</span></div>
+    <div><b>Codex</b><span>OpenAI 出品，同类的 AI 编程助手。它读取的项目说明文件是 <code>AGENTS.md</code>，用法和 <code>CLAUDE.md</code> 相同。</span></div>
+  </div>
+  <p class="small">本章的流程两种工具都适用。下文的提示语以 Claude Code 为例；换成 Codex 时，把 <code>CLAUDE.md</code> 改成 <code>AGENTS.md</code> 即可。</p>
+  <h3>为什么选「单一 HTML 文件」</h3>
+  <ul>
+    <li>手机、电脑打开就能玩，不用安装，适合家庭和小组。</li>
+    <li>一个文件就是全部，容易保存、分享、放上 GitHub Pages。</li>
+    <li>AI 编程助手处理这类项目最稳定，修改也容易检查。</li>
+  </ul>
+</section>
+
+<section id="case">
+  <h2>四、范例：《以巴弗提的旅程》</h2>
+  <p>一句话：跟着以巴弗提从腓立比走到罗马，再带着保罗的信回家。同一条路，同样的病菌，不同的是走路的人。</p>
+  <div class="verse">他为做基督的工夫，几乎至死，不顾性命，要补足你们供给我的不及之处。<cite>腓立比书 2:30</cite></div>
+  <div class="tbl"><table>
+    <tr><th>段落</th><th>经文</th><th>剧情与玩法</th></tr>
+    <tr><td>序幕 · 去程</td><td>4:2；2:25-30</td><td>背着教会不同心、外面敌对、忧虑三块石头上路。结党、嫉妒、纷争、怨言化成病菌，一波一波躲不过，只能争战，每打一仗也沾染一点。圣灵的供应以油和水迎面送来。最后几乎病死在罗马城外，「然而神怜恤他」（2:27）。</td></tr>
+    <tr><td>第一章 · 罗马</td><td>1:3-30</td><td>五个处境的选择。「顺着圣灵」的路一开始是模糊的，要先长按「等候」被光照才看得见。保罗面对出于嫉妒的传道人说：「这有何妨。」</td></tr>
+    <tr><td>第二章 · 代赎的阶梯</td><td>2:5-13</td><td>先选角色（孩子、父母、照顾者、长辈、一家人）。基督的光一级一级降到家里九个处境；长按「让祂降下来」20 秒，浮现经文、问题、圣灵在里面的祷告、代赎的结果。</td></tr>
+    <tr><td>第三章 · 标竿</td><td>3:3-14</td><td>资历像蛛网一排排缠上来，越挣越紧。抓住从上面来的 4:8 之光才松开；最深的「自以为义」只有等候基督来得着你（3:12）。</td></tr>
+    <tr><td>第四章 · 回程</td><td>4:2-9</td><td>平安守着他，病菌会打薄它，抓住 4:8 之光就加厚（4:9）。进城前有 40 秒的「思念」练习，再带着平安去见两位姊妹。</td></tr>
+    <tr><td>终章 · 未完</td><td>1:3-6</td><td>读信读到两姊妹的名字时停住。长按「等候」，生命树九层根扎下（基督已成），果子还在长（圣灵还在做），以 1:6 作结。</td></tr>
+  </table></div>
+  <p class="small">游戏共 27 段，目录全部开放，每段标出要读的经文；每段开始自动存档，可以「先玩一段，再读经」。</p>
+</section>
+
+<section id="philosophy">
+  <h2>五、设计哲学</h2>
+  <h3>1. 两条神学控制线</h3>
+  <p>每一个设计决定，都要回到这两条线检查：</p>
+  <div class="pair">
+    <div><b>代赎</b><span>基督的行动是为我们、代替我们的（林后 8:9）。经文里基督的步伐不是给我们模仿的榜样，是祂降到我们的处境，带来代赎的结果。</span></div>
+    <div><b>耶稣基督的灵在我们里面祷告</b><span>玩家能走下去，是因为祂的灵在里面祷告（腓 1:19；罗 8:26；加 4:6）。游戏里的「等候」按钮就是这条线。</span></div>
+  </div>
+  <h3>2. 机制就是神学</h3>
+  <div class="tbl"><table>
+    <tr><th>游戏机制</th><th>传达的真理</th></tr>
+    <tr><td>「等候」按钮</td><td>对圣灵敞开；去程锁着，到「神怜恤他」才打开</td></tr>
+    <tr><td>反击、挣脱、我自己来</td><td>每次都适得其反：画面剧烈摇晃、缠得更紧</td></tr>
+    <tr><td>争战躲不过，每次都沾染</td><td>以巴弗提是「一同当兵」的（2:25），代价是真实的</td></tr>
+    <tr><td>油和水，与果子分开</td><td>路上的供应是补给，果子是圣灵结出来的</td></tr>
+    <tr><td>平安会变薄，领受就更新</td><td>美德只靠自己持守会腐败；赐平安的神与领受的人同在（4:8-9）</td></tr>
+    <tr><td>自以为义只有基督能松开</td><td>不是我们抓住祂，是祂得着我们（3:12）</td></tr>
+    <tr><td>根全部亮，果子还在长</td><td>基督已成，我们未成，直到基督的日子（1:6）</td></tr>
+  </table></div>
+  <h3>3. 其他原则</h3>
+  <ul>
+    <li><b>不读成道德主义</b>：「向着标竿直跑」不是靠意志力的赛跑，每一处「努力」都引回代赎和圣灵的大能。</li>
+    <li><b>忠于经文，坦白交代判断</b>：例如 1:15-17 嫉妒传道发生在罗马不在腓立比；「病菌」是寓意，经文没交代病因；圣经没记载两姊妹是否和好，所以结局留白。</li>
+    <li><b>为真实的用家设计</b>：对象是中国大陆的多代家庭；处境取材于家庭研究（三代动力、夹心照顾、双职与单亲、代代相传的打骂）。</li>
+    <li><b>牧养护栏</b>：顺服不等于忍受家暴；和好不必勉强、不必马上；碰到暴力题材附上求助资讯。</li>
+    <li><b>不计分，不比快</b>：结算只有「旅程记录」和去程、回程的对照。</li>
+  </ul>
+</section>
+
+<section id="method">
+  <h2>六、七步工作流程</h2>
+  <p>下面每一步都附上范例项目中<b>真实用过</b>的提示语（略作整理）。分工原则只有一句：<b>作者掌握神学与牧养判断，AI 负责查考、设计建议与实作。</b></p>
+  <ol class="steps">
+    <li><div>
+      <h3>立项：先要构思，不要程序</h3>
+      <p>第一句话就要求 AI 先说构思。这样你有机会在它写任何程序之前，修正方向。</p>
+      <div class="prompt" data-who="作者">你帮我把腓立比书做成圣经游戏，你先说说你的构思。</div>
+      <p class="small">AI 第一版提出「喜乐值」、四章四关。作者接着补上自己的神学构想：用以巴弗提的旅程、教会纷争的重担、病到几乎要死、圣灵的果子、向下扎根。AI 据此重写构思。</p>
+    </div></li>
+    <li><div>
+      <h3>研经查证：让 AI 查，自己判断</h3>
+      <p>遇到经文解释的关键点，请 AI 查主流注释并附来源，再由作者决定。</p>
+      <div class="prompt" data-who="作者">你先帮我查考当代最好的注释书怎样看保罗说「有人因嫉妒纷争传基督」，这件事发生的地点是在罗马，还是在保罗所关心的腓立比教会？先查清楚。</div>
+      <p class="small">结果：主流注释认为在罗马；但 1:17 和 2:3 的「结党」（ἐριθεία）互相呼应，同样的病也在腓立比发作。作者据此决定：去程背着腓立比的结党，到了罗马才看见同一个病菌。</p>
+    </div></li>
+    <li><div>
+      <h3>写下项目记忆</h3>
+      <p>把定下来的神学原则写进 <code>CLAUDE.md</code>（Codex 用 <code>AGENTS.md</code>）。以后每次开新对话，AI 都会先读它。</p>
+      <div class="prompt" data-who="作者">这些美德唯有靠基督的义去成就，更具体就是耶稣基督的圣灵，背后是对三位一体真神的顺从。你要把这个观点记在记忆中。</div>
+      <p class="small">范例项目的 <code>CLAUDE.md</code> 包括：对象、工作方式、两条神学控制线、其他原则、牧养护栏、本卷的研经判断。见作业部分的范本。</p>
+    </div></li>
+    <li><div>
+      <h3>实作第一版</h3>
+      <p>构思确认后才说「开始做」。要求单一 HTML、手机可玩、简体中文和合本。AI 会写程序、自己测试，并给你一个试玩链接。</p>
+    </div></li>
+    <li><div>
+      <h3>试玩，然后具体地说</h3>
+      <p>亲自玩，把感受说得具体：哪一段、哪一句、太短还是太长、像不像经文的意思。</p>
+      <div class="prompt" data-who="作者">第二章往上抓点一下的时候，震动要更高级别、剧烈的晃动；向下走按住不放的时间要更长，起码二十秒，让人真的能够消化、敏感这种在圣灵里向下走的经验。</div>
+    </div></li>
+    <li><div>
+      <h3>请 AI 评估，而不只是照做</h3>
+      <p>重大改动前，要求 AI 以专业角度评估：好在哪里、风险在哪里、市面上的好游戏怎么做。</p>
+      <div class="prompt" data-who="作者">我再提醒你作为顶级的游戏设计师，对我的建议作出评估，作回应。</div>
+      <p class="small">例：作者提议把「等候」改名为「向下扎根」。AI 评估后建议全程保留「等候」，以免混淆两条控制线，只在结局揭示「你一路的等候，原来就是向下扎根」。作者采纳。</p>
+    </div></li>
+    <li><div>
+      <h3>版本、定稿与发布</h3>
+      <ul>
+        <li>每一卷书一个开发分支；修订阶段只推送分支，<b>作者说「定稿」才合并</b>到 <code>main</code>。</li>
+        <li>公开发布可用 GitHub Pages、Netlify Drop，或直接分享试玩链接。</li>
+        <li>对话太长时，开新对话做下一卷；靠 <code>CLAUDE.md</code> 延续原则。</li>
+      </ul>
+    </div></li>
+  </ol>
+</section>
+
+<section id="revisions">
+  <h2>七、真实修订个案：从回馈到改动</h2>
+  <p>范例游戏经过十多轮修订。下面挑八个，看作者怎样提出、AI 怎样处理、我们学到什么。</p>
+  <div class="tbl"><table>
+    <tr><th>个案</th><th>作者的回馈</th><th>改动</th><th>学到的功课</th></tr>
+    <tr><td>结局太老套</td><td>和好、计分的结局太俗套，应该留白</td><td>读信读到两姊妹的名字时停住，「未完」，以 1:6 作结</td><td>圣经没写的，游戏不替它写</td></tr>
+    <tr><td>处境 5 的语病</td><td>焦急的应该是以巴弗提「替保罗」着急</td><td>改写处境与三个选项</td><td>小处的叙事逻辑也要准确</td></tr>
+    <tr><td>阶梯太快</td><td>摇晃要剧烈，向下要按住 20 秒</td><td>全画面震动；20 秒中逐句浮现默想</td><td>时间本身就是属灵经验的一部分</td></tr>
+    <tr><td>第三章太单薄</td><td>资历应成排成阵像蛛网；要抓住 4:8 才松得开</td><td>方阵、蛛网、「越挣越紧」、抓光松手</td><td>放下不是努力放下，而是抓住从上面来的</td></tr>
+    <tr><td>打病菌太短</td><td>每段要争战一分钟</td><td>改为按时间计算，并重新平衡难度</td><td>改时长会牵动平衡，要一并调整</td></tr>
+    <tr><td>第二章变成模仿</td><td>我们效法不来，要呈现基督代赎的行动；对象是多代家庭</td><td>基督的光降下来；选角色；九个家庭处境；牧养护栏</td><td>机制要对准神学的主语：是基督，不是我们</td></tr>
+    <tr><td>未完要有生命树</td><td>按住，让根一层层显出代赎的经文，向上结果</td><td>互动生命树：根全部扎好，果子还在长</td><td>用整个游戏学会的动作，在结局揭示它的意义</td></tr>
+    <tr><td>一定要从头玩到尾</td><td>希望可以分段进出</td><td>27 段目录、每段存档、随时退出</td><td>为真实的使用场景设计：先玩一段，再读经</td></tr>
+  </table></div>
+</section>
+
+<section id="prompts">
+  <h2>八、提示语范本</h2>
+  <p>把方括号里的内容换成你的书卷和想法。每一张卡片都可以直接复制。</p>
+  <div class="prompt" data-who="1 · 立项">我想把[书卷]做成一个圣经游戏，对象是[对象]。请先读完 CLAUDE.md，然后告诉我你的构思：故事框架、每一章的玩法、贯穿全局的机制。先不要写程序。</div>
+  <div class="prompt" data-who="2 · 研经查证">请查考主流注释（附来源），说明[经文]的[问题]。分开列出：学者的共识、仍有争论的地方、你不确定的地方。</div>
+  <div class="prompt" data-who="3 · 神学转机制">这段经文的核心真理是[真理]。请提出三个不同的游戏机制，让玩家用动作经历这个真理，并说明每个机制可能被误读成什么。</div>
+  <div class="prompt" data-who="4 · 请求评估">请以顶级游戏设计师的角度评估我的建议：好在哪里、有什么神学或设计上的风险、市面上好的游戏怎么处理类似的问题。先评估，等我决定再动手。</div>
+  <div class="prompt" data-who="5 · 实作">照我们确认的方案做。要求：单一 HTML 文件，手机可玩，简体中文，和合本经文。做完请实际测试，如实告诉我哪些测过、哪些没测过。</div>
+  <div class="prompt" data-who="6 · 修订">我试玩了[段落]，问题是[具体描述]。请先说你的理解，再修改。</div>
+  <div class="prompt" data-who="7 · 记忆">请把这个原则写进 CLAUDE.md，让以后每一卷都遵守：[原则]。</div>
+</section>
+
+<section id="pitfalls">
+  <h2>九、与 AI 协作的守则</h2>
+  <div class="note warn"><b>神学判断永远是你的</b>
+    <p>AI 可以查注释、提方案、指出风险，但哪一个解释、哪一个牧养取向，由作者决定。范例中每一个神学转向（代赎的阶梯、反道德主义、两条控制线）都是作者提出的。</p></div>
+  <div class="note warn"><b>要求它提醒你，而不只是顺从</b>
+    <p>AI 倾向照你说的做。养成习惯，在重大改动前问「请评估」。范例中 AI 曾提醒：语音输入把「腓立比书」说成「以弗所书」；「斗拳不是打空气」出自哥林多前书 9:26，不在腓立比书。</p></div>
+  <div class="note warn"><b>引用要查证</b>
+    <p>请 AI 附来源。不确定的资料（例如求助热线号码），要在上线前再核实。</p></div>
+  <div class="note"><b>先说理解，再动手</b>
+    <p>口语描述常有歧义。请 AI 先复述你的意思，确认无误再改，可以省下很多来回。</p></div>
+  <div class="note"><b>小步修改，每步试玩</b>
+    <p>一次只改一个部分，改完立刻试玩。AI 应如实报告测试结果，包括没测到的地方。</p></div>
+  <div class="note"><b>游戏文字与设计讨论分开</b>
+    <p>讨论时可以用「化疗」「共生」这类比喻帮助思考，但游戏里只呈现经文和故事本身。</p></div>
+  <div class="note"><b>牧养护栏不能省</b>
+    <p>碰到家暴、羞辱、哀伤等题材，要写明：顺服不等于忍受暴力，和好不必勉强，并附上可信的求助资讯。</p></div>
+</section>
+
+<section id="homework">
+  <h2>十、课堂练习与作业</h2>
+  <h3>课堂练习（30 分钟，三至四人一组）</h3>
+  <ol>
+    <li>选一段经文（建议：腓利门书全卷，或帖撒罗尼迦前书 4:13-18）。</li>
+    <li>写出这段经文的一句核心真理。</li>
+    <li>设计一个「动作」，让玩家用手经历这个真理；再写出这个动作可能被误读成什么。</li>
+    <li>用两条神学控制线检查：这个设计里，基督做了什么？圣灵在哪里？</li>
+  </ol>
+  <h3>作业：一卷书信的游戏原型</h3>
+  <ul>
+    <li>为你选的书卷写一份 <code>CLAUDE.md</code>（或 <code>AGENTS.md</code>），至少包括：对象、两条神学控制线在本卷的样子、三条研经判断、牧养护栏。</li>
+    <li>和 AI 一起完成一个<b>可玩的原型</b>，至少一章，单一 HTML。</li>
+    <li>附一份「机制即神学」对照表，至少三项。</li>
+    <li>附一页修订记录：你给过哪些回馈、AI 怎样回应、你最后怎样决定。</li>
+  </ul>
+  <h3>评分重点</h3>
+  <div class="tbl"><table>
+    <tr><th>项目</th><th>看什么</th><th>比重</th></tr>
+    <tr><td>经文忠实</td><td>解释有根据，判断交代清楚，不替圣经补写</td><td>30%</td></tr>
+    <tr><td>机制即神学</td><td>动作本身就在传达真理，没有落入道德主义</td><td>30%</td></tr>
+    <tr><td>用家与牧养</td><td>贴近真实对象的处境，护栏到位</td><td>20%</td></tr>
+    <tr><td>协作过程</td><td>修订记录显示作者主导神学、善用 AI 评估</td><td>20%</td></tr>
+  </table></div>
+  <h3>CLAUDE.md 范本（节录自范例项目）</h3>
+  <div class="prompt" data-who="CLAUDE.md">## 对象
+- 多代家庭：孩子、父母、照顾年老父母的中间一代、长辈。开场先选角色。
+
+## 工作方式
+- 游戏文字用简体中文，经文用和合本。
+- 修订阶段只推送开发分支；作者说「定稿」才合并。
+- 游戏里不用现代术语解释属灵逻辑。
+
+## 两条神学控制线
+1. 代赎：基督为我们、代替我们（林后 8:9）。写法是「因为基督……，所以我们……」。
+2. 耶稣基督的灵在我们里面祷告（腓 1:19；罗 8:26；加 4:6）。
+
+## 牧养护栏
+- 顺服是对天父，不是对伤害你的人。
+- 和好是圣灵一步一步的工作，不必勉强、不必马上。</div>
+</section>
+
+<section id="discuss">
+  <h2>十一、讨论题</h2>
+  <ol>
+    <li>「机制本身就在讲神学」：你玩范例游戏时，哪一个动作让你最有体会？为什么？</li>
+    <li>第二章从「我们学着向下走」改成「基督为我们降下来」。这个改动在神学上和玩家感受上，各带来什么不同？</li>
+    <li>游戏怎样才不会变成「靠努力过关」的道德主义？请举一个你自己的设计为例。</li>
+    <li>和 AI 协作时，哪些决定应该交给它，哪些一定要自己做？</li>
+    <li>你的教会或家庭，最适合在什么场合使用这样的游戏？要怎样配合读经和分享？</li>
+  </ol>
+</section>
+
+<footer>
+  范例项目：Abe the Shepherd Studio · 腓立比书《以巴弗提的旅程》。本笔记整理自作者与 Claude Code 的实际协作过程，提示语为真实对话的整理版本。
+</footer>
+</main>
+</div>
+
+<script>
+document.querySelectorAll('.prompt').forEach(el=>{
+  const b=document.createElement('button'); b.className='copy'; b.type='button'; b.textContent='复制';
+  b.addEventListener('click',()=>{
+    const text=el.childNodes[0].textContent;
+    const done=()=>{ b.textContent='已复制'; setTimeout(()=>b.textContent='复制',1500); };
+    const fallback=()=>{ const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent='已选取，请按复制'; };
+    try{ navigator.clipboard.writeText(text).then(done,fallback); }catch(e){ fallback(); }
+  });
+  el.appendChild(b);
+});
+</script>
+</body>
+</html>
