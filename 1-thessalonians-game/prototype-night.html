@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>一夜 · 灰盒原型</title>
+<style>
+html,body{margin:0;height:100%;background:#07080d;color:#efe4cc;overflow:hidden;font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:none}
+canvas{display:block;width:100vw;height:100vh;touch-action:none}
+.ov{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;gap:14px;background:rgba(7,8,13,.82)}
+.ov[hidden]{display:none}
+h1{font-weight:400;letter-spacing:.4em;font-size:2.2em;margin:0;color:#f2c56a}
+p{margin:0;font-size:1.15em;line-height:1.8;max-width:30em}
+.v{color:#e9d6a6;font-size:1em}
+.small{font-size:.85em;color:#a99c80}
+button{font:inherit;font-size:1.2em;min-height:56px;min-width:160px;padding:8px 22px;border-radius:14px;border:1px solid #f2b552;background:#f2b552;color:#1b140b;cursor:pointer}
+button.ghost{background:transparent;color:#efe4cc;border-color:#7a6236;font-size:1em;min-height:48px}
+pre{font-size:.8em;color:#c9bc9f;text-align:left;white-space:pre-wrap;background:#14120c;border:1px solid #3b3121;border-radius:8px;padding:10px;max-width:30em;width:100%;max-height:34vh;overflow:auto;user-select:all;-webkit-user-select:all}
+#pause{position:fixed;top:10px;right:10px;width:48px;height:48px;min-width:0;min-height:0;padding:0;border-radius:24px;background:rgba(0,0,0,.3);border:1px solid #3b3121;color:#a99c80;font-size:1.1em}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<button id="pause" hidden>❚❚</button>
+<div class="ov" id="intro">
+  <h1>一 夜</h1>
+  <p class="small">灰盒原型 · 约三分钟 · 只用一根手指</p>
+  <button id="go">开始</button>
+</div>
+<div class="ov" id="paused" hidden><button id="cont">继续</button></div>
+<div class="ov" id="end" hidden>
+  <p class="v" id="endv"></p>
+  <pre id="rec"></pre>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+    <button class="ghost" id="copy">复制试玩记录</button>
+    <button class="ghost" id="again">再玩一夜</button>
+  </div>
+</div>
+<script>
+(()=>{
+const Q=new URLSearchParams(location.search);
+const SPEED=+Q.get('speed')||1;           // 测试用：?speed=6
+const NIGHT=180;                            // 一夜的长度（秒）
+const cv=document.getElementById('c'), cx=cv.getContext('2d');
+let W=0,H=0,DPR=1,LS=1;
+const $=id=>document.getElementById(id);
+
+// ---------- 场景 ----------
+const HOMES=[[.24,.26],[.5,.18],[.76,.26],[.16,.52],[.4,.46],[.62,.54],[.85,.48]];
+let S=null;            // 全部游戏状态
+const stars=Array.from({length:120},()=>({x:Math.random(),y:Math.random()*.8,r:Math.random()*1.3+.3,p:Math.random()*6}));
+const houses=Array.from({length:22},(_,i)=>({x:i/22,w:.03+Math.random()*.04,h:.04+Math.random()*.07}));
+
+function layout(){
+  DPR=Math.min(2,window.devicePixelRatio||1); W=innerWidth; H=innerHeight; LS=Math.max(1,Math.min(1.5,Math.min(W,H)/560));
+  cv.width=W*DPR; cv.height=H*DPR; cx.setTransform(DPR,0,0,DPR,0,0);
+  if(!S) return;
+  const top=70, bot=H-190, left=40, right=W-40;
+  S.jar={x:W/2,y:H-82,r:Math.max(40,Math.min(54,W*.07))};
+  S.lamps.forEach((l,i)=>{ const nx=left+HOMES[i][0]*(right-left), ny=top+HOMES[i][1]/.6*(bot-top)*.9;
+    const dx=l.x-l.hx, dy=l.y-l.hy; l.hx=nx; l.hy=ny; l.x=nx+(isNaN(dx)?0:dx); l.y=ny+(isNaN(dy)?0:dy); });
+}
+addEventListener('resize',layout);
+
+function newNight(){
+  S={t:0,oil:0,lamps:HOMES.map(()=>({hx:NaN,hy:NaN,x:0,y:0,f:.85+Math.random()*.1,tilt:0,fallen:false,state:'ok',grief:false,gather:0,spark:0,ember:false,flick:Math.random()*9})),
+     gusts:[],ptr:null,path:[],mode:null,target:null,moved:false,puffs:[],
+     sched:{faint:8,tilt:26,drift:42,wind:52,grace:70,death:96},
+     hints:{jar:'show'},hint:null,ended:false,dawn:0,
+     rec:{waits:0,waitSec:0,cover:0,lift:0,bring:0,block:0,gather:0,empty:0,minLit:7,graceSeen:0,hits:0,falls:0,litAt:[]}};
+  S.lamps[0].f=.9;
+  layout(); S.lamps.forEach(l=>{l.x=l.hx;l.y=l.hy;});
+}
+
+// ---------- 小工具 ----------
+const D=(ax,ay,bx,by)=>Math.hypot(ax-bx,ay-by);
+const live=()=>S.lamps.filter(l=>!l.ember);
+const lit=()=>S.lamps.filter(l=>!l.ember&&l.f>0.02&&!l.fallen).length;
+const rand=(a,b)=>a+Math.random()*(b-a);
+function pick(fn){ const c=S.lamps.filter(fn); return c.length?c[Math.floor(Math.random()*c.length)]:null; }
+function puff(x,y,col){ S.puffs.push({x,y,t:0,col}); }
+function useOil(a){ if(S.oil<a-1e-6) return false; S.oil-=a; return true; }
+function hintDone(k){ if(S.hints[k]!=='done'){ S.hints[k]='done'; } }
+function hintShow(k,obj){ if(!S.hints[k]){ S.hints[k]='show'; S.hintObj=S.hintObj||{}; S.hintObj[k]=obj; } }
+function pace(){ return 1-0.45*Math.min(1,S.t/NIGHT); }   // 越到后夜，事情越密
+
+// ---------- 事件 ----------
+function events(){
+  const s=S.sched, t=S.t;
+  if(t>=s.faint){ const l=pick(x=>!x.ember&&x.state==='ok'&&!x.fallen); if(l){ l.state='faint'; hintShow('faint',l);} s.faint=t+rand(10,16)*pace(); }
+  if(t>=s.tilt){ const l=pick(x=>!x.ember&&x.state==='ok'&&!x.fallen&&x.f>.1); if(l){ l.state='tilt'; hintShow('tilt',l);} s.tilt=t+rand(16,24)*pace(); }
+  if(t>=s.drift){ const l=pick(x=>!x.ember&&x.state==='ok'&&!x.fallen); if(l){ l.state='drift'; hintShow('drift',l);} s.drift=t+rand(18,26)*pace(); }
+  if(t>=s.wind){ spawnGust(); s.wind=t+rand(13,19)*pace(); }
+  if(t>=s.grace){ const l=pick(x=>!x.ember&&!x.fallen&&x.f<.7); if(l){ l.f=Math.min(1,l.f+.45); if(l.state==='faint') l.state='ok'; l.spark=2.5; S.rec.graceSeen++; } s.grace=t+rand(22,32); }
+  if(t>=s.death){ s.death=1e9;
+    // 有人睡了（4:13）：不是最暗的那盏，而是一盏好好的灯
+    const l=pick(x=>!x.ember&&x.state==='ok'&&x.f>.4)||pick(x=>!x.ember);
+    if(l){ l.ember=true; l.state='ok'; l.f=0; l.gather=0; l.fall=0;
+      S.lamps.forEach(o=>{ if(o!==l&&!o.ember&&D(o.hx,o.hy,l.hx,l.hy)<Math.min(W,H)*.5) o.grief=true; });
+      hintShow('grief',l); }
+  }
+}
+function spawnGust(){
+  const l=pick(x=>!x.ember)||S.lamps[0]; const side=Math.random()<.5?-1:1;
+  const sx=side<0?-30:W+30, sy=l.hy+rand(-80,40);
+  const sp=Math.max(90,W*.14);
+  S.gusts.push({x:sx,y:sy,tx:l.hx,ty:l.hy,vx:0,vy:0,sp,life:0,blocked:0,dead:false,seed:Math.random()*9});
+  hintShow('wind',S.gusts[S.gusts.length-1]);
+}
+
+// ---------- 每帧 ----------
+function step(dt){
+  S.t+=dt; events();
+  const p=S.ptr;
+  // 等候：按住器皿，光从上面倒下来
+  if(S.mode==='wait'){ S.oil=Math.min(1,S.oil+0.42*dt); S.rec.waitSec+=dt; if(S.oil>=.5) hintDone('jar'); }
+  // 按住一盏灯：护着它
+  if(S.mode==='lamp'&&S.target&&!S.moved){ const l=S.target;
+    if(!l.ember&&!l.fallen&&l.state!=='drift'){
+      if(S.oil>0){ const a=Math.min(S.oil,0.3*dt); S.oil-=a; l.f=Math.min(1,l.f+a*2.1); l.covering=true;
+        if(l.state==='faint'&&l.f>=.92){ l.state='ok'; S.rec.cover++; hintDone('faint'); puff(l.x,l.y-30,'#ffd27a'); } }
+      else if(!S.emptyShown){ S.emptyShown=true; S.rec.empty++; puff(p.x,p.y,'#666'); }
+    }
+  }
+  S.lamps.forEach(l=>{
+    l.flick+=dt*9; l.spark=Math.max(0,l.spark-dt); l.covering=false;
+    if(l.ember) return;
+    let dec=0.006;
+    if(l.state==='faint') dec+=0.045;
+    if(l.grief) dec+=0.022;
+    if(l.state==='drift'&&!(S.mode==='lamp'&&S.target===l)){
+      const cxm=W/2, cym=H*.38, vx=l.x-cxm, vy=l.y-cym, m=Math.hypot(vx,vy)||1;
+      const nx=l.x+vx/m*9*dt, ny=l.y+vy/m*9*dt;
+      if(nx>20&&nx<W-20&&ny>50&&ny<H-170){ l.x=nx; l.y=ny; }
+    }
+    const away=D(l.x,l.y,l.hx,l.hy); dec+=Math.min(0.04,away*0.0003);
+    if(l.gather>0){ l.gather-=dt; dec*=0.4; }
+    if(l.state==='tilt'&&!l.fallen){ l.tilt+=0.075*dt*(l.gather>0?.5:1); if(l.tilt>0.95){ l.fallen=true; l.tilt=1.45; l.f=0; S.rec.falls++; } }
+    if(!l.fallen) l.f=Math.max(0,l.f-dec*dt);
+  });
+  // 同聚的灯彼此照亮
+  const g=S.lamps.filter(l=>l.gather>0&&!l.ember&&!l.fallen);
+  if(g.length>1){ const avg=g.reduce((a,l)=>a+l.f,0)/g.length; g.forEach(l=>{ l.f=Math.min(1,l.f+(Math.max(avg,l.f)-l.f)*0.5*dt+0.012*dt); }); }
+  // 风
+  S.gusts.forEach(w=>{
+    if(w.dead) return; w.life+=dt;
+    const dx=w.tx-w.x, dy=w.ty-w.y, m=Math.hypot(dx,dy)||1; w.vx=dx/m*w.sp; w.vy=dy/m*w.sp;
+    if(p&&S.mode!=='wait'&&D(p.x,p.y,w.x,w.y)<70){
+      if(useOil(0.08)){ w.dead=true; S.rec.block++; hintDone('wind'); puff(w.x,w.y,'#cfe6ff'); return; }
+      else if(!S.emptyShown){ S.emptyShown=true; S.rec.empty++; puff(p.x,p.y,'#666'); }
+    }
+    w.x+=w.vx*dt; w.y+=w.vy*dt;
+    if(m<26){ w.dead=true; S.rec.hits++;
+      S.lamps.forEach(l=>{ if(l.ember) return; const d=D(l.x,l.y,w.tx,w.ty); if(d<130){ l.f=Math.max(0,l.f-(l.gather>0?.17:.38)*(1-d/180)); } });
+      puff(w.tx,w.ty,'#8aa'); }
+  });
+  S.gusts=S.gusts.filter(w=>!w.dead);
+  S.puffs.forEach(f=>f.t+=dt); S.puffs=S.puffs.filter(f=>f.t<1);
+  const n=lit(); S.rec.minLit=Math.min(S.rec.minLit,n);
+  if(S.t>=30*(S.rec.litAt.length+1)) S.rec.litAt.push(n);
+  if(S.t>=NIGHT) dawnStart();
+}
+
+// ---------- 手势 ----------
+function lampAt(x,y){ let b=null,bd=48*LS; S.lamps.forEach(l=>{ const d=D(x,y,l.x,l.y-10*LS); if(d<bd){bd=d;b=l;} }); return b; }
+function down(e){
+  if(!S||S.ended||S.paused) return; e.preventDefault();
+  const x=e.clientX,y=e.clientY; S.ptr={x,y,x0:x,y0:y}; S.path=[{x,y}]; S.moved=false; S.emptyShown=false;
+  if(D(x,y,S.jar.x,S.jar.y)<S.jar.r+18){ S.mode='wait'; S.rec.waits++; return; }
+  const l=lampAt(x,y);
+  if(l){ S.mode='lamp'; S.target=l;
+    if(l.state==='drift'){ if(S.oil<0.1){ S.rec.empty++; S.emptyShown=true; puff(x,y,'#666'); S.mode='free'; S.target=null; } else { l.held=true; } }
+    return; }
+  S.mode='free';
+}
+function move(e){
+  if(!S||!S.ptr) return; e.preventDefault();
+  const x=e.clientX,y=e.clientY, p=S.ptr; p.x=x; p.y=y;
+  const last=S.path[S.path.length-1]; if(D(x,y,last.x,last.y)>6) S.path.push({x,y});
+  if(D(x,y,p.x0,p.y0)>14) S.moved=true;
+  const l=S.target;
+  if(S.mode==='lamp'&&l){
+    if(l.state==='drift'&&l.held){ l.x=x; l.y=y+10; if(D(l.x,l.y,l.hx,l.hy)<34){ l.x=l.hx; l.y=l.hy; l.state='ok'; l.held=false; useOil(0.1); S.rec.bring++; hintDone('drift'); puff(l.x,l.y-30,'#ffd27a'); S.mode='free'; S.target=null; } }
+    else if((l.state==='tilt'||l.fallen)&&p.y0-y>36){
+      if(useOil(0.15)){ l.state='ok'; l.tilt=0; if(l.fallen){ l.fallen=false; l.f=Math.max(l.f,.3);} S.rec.lift++; hintDone('tilt'); puff(l.x,l.y-30,'#ffd27a'); }
+      else if(!S.emptyShown){ S.emptyShown=true; S.rec.empty++; puff(x,y,'#666'); }
+      S.mode='free'; S.target=null;
+    }
+  }
+}
+function up(e){
+  if(!S||!S.ptr) return;
+  if(S.mode==='lamp'&&S.target&&S.target.held){ S.target.held=false; }
+  if(S.path.length>8){ // 画一个圈：聚会
+    const a=S.path[0], b=S.path[S.path.length-1]; let len=0; for(let i=1;i<S.path.length;i++) len+=D(S.path[i].x,S.path[i].y,S.path[i-1].x,S.path[i-1].y);
+    if(len>180&&D(a.x,a.y,b.x,b.y)<Math.max(70,len*.18)){
+      const inside=S.lamps.filter(l=>!l.ember&&inPoly(l.x,l.y-10,S.path));
+      if(inside.length>=2){
+        if(useOil(0.3)){ inside.forEach(l=>{ l.gather=24; l.grief=false; }); S.rec.gather++; hintDone('grief'); hintDone('gather'); S.gatherFx={pts:S.path.slice(),t:0}; }
+        else { S.rec.empty++; puff(b.x,b.y,'#666'); }
+      }
+    }
+  }
+  S.ptr=null; S.mode=null; S.target=null; S.path=[];
+}
+function inPoly(x,y,P){ let c=false; for(let i=0,j=P.length-1;i<P.length;j=i++){ const a=P[i],b=P[j]; if(((a.y>y)!==(b.y>y))&&(x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x)) c=!c; } return c; }
+cv.addEventListener('pointerdown',down); addEventListener('pointermove',move); addEventListener('pointerup',up); addEventListener('pointercancel',up);
+
+// ---------- 画 ----------
+function draw(now){
+  const T=now/1000, dawn=S?S.dawn:0, prog=S?Math.min(1,S.t/NIGHT):0;
+  // 天空：越近天亮越淡
+  const lift=Math.max(0,(prog-.85)/.15)*.35+dawn*.65;
+  const g=cx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,mix('#05060c','#3a5a8a',lift)); g.addColorStop(.7,mix('#0c0d16','#c99a6a',lift)); g.addColorStop(1,mix('#120f0c','#f2c98a',lift));
+  cx.fillStyle=g; cx.fillRect(0,0,W,H);
+  stars.forEach(s=>{ cx.globalAlpha=(1-lift)*(.4+.4*Math.sin(T*1.3+s.p)); cx.fillStyle='#dfe6ff'; cx.beginPath(); cx.arc(s.x*W,s.y*H,s.r,0,7); cx.fill(); });
+  cx.globalAlpha=1;
+  // 城的剪影
+  cx.fillStyle=mix('#0b0b10','#2a2420',lift);
+  houses.forEach(h=>{ cx.fillRect(h.x*W,H-150-h.h*H,h.w*W,h.h*H+150); });
+  cx.fillRect(0,H-150,W,150);
+  if(!S) return;
+  // 家的位置（淡圈）
+  S.lamps.forEach(l=>{ if(l.ember) return; cx.strokeStyle='rgba(242,197,106,.14)'; cx.setLineDash([4,6]); cx.beginPath(); cx.arc(l.hx,l.hy,22,0,7); cx.stroke(); cx.setLineDash([]);
+    if(D(l.x,l.y,l.hx,l.hy)>30){ cx.strokeStyle='rgba(242,197,106,.12)'; cx.beginPath(); cx.moveTo(l.x,l.y); cx.lineTo(l.hx,l.hy); cx.stroke(); } });
+  // 同聚的连线
+  const gl=S.lamps.filter(l=>l.gather>0&&!l.ember);
+  cx.strokeStyle='rgba(255,214,140,.18)'; cx.lineWidth=2;
+  for(let i=0;i<gl.length;i++) for(let j=i+1;j<gl.length;j++){ cx.beginPath(); cx.moveTo(gl[i].x,gl[i].y-14); cx.lineTo(gl[j].x,gl[j].y-14); cx.stroke(); }
+  cx.lineWidth=1;
+  if(S.gatherFx){ const f=S.gatherFx; f.t+=1/60; cx.strokeStyle=`rgba(255,214,140,${Math.max(0,.6-f.t*.5)})`; cx.lineWidth=3; cx.beginPath(); f.pts.forEach((q,i)=>i?cx.lineTo(q.x,q.y):cx.moveTo(q.x,q.y)); cx.closePath(); cx.stroke(); cx.lineWidth=1; if(f.t>1.2) S.gatherFx=null; }
+  // 灯
+  S.lamps.forEach(l=>drawLamp(l,T));
+  // 风
+  S.gusts.forEach(w=>{ const ang=Math.atan2(w.vy,w.vx);
+    for(let k=0;k<5;k++){ const off=(k-2)*9, len=40+k*6;
+      cx.strokeStyle=`rgba(200,220,255,${.35-k*.04})`; cx.lineWidth=2; cx.beginPath();
+      const bx=w.x-Math.cos(ang)*len-Math.sin(ang)*off, by=w.y-Math.sin(ang)*len+Math.cos(ang)*off;
+      cx.moveTo(bx,by); cx.quadraticCurveTo(w.x-Math.cos(ang)*len*.4-Math.sin(ang)*(off+Math.sin(T*6+k+w.seed)*6), w.y-Math.sin(ang)*len*.4+Math.cos(ang)*(off+6), w.x-Math.sin(ang)*off*.4, w.y+Math.cos(ang)*off*.4); cx.stroke(); }
+    cx.lineWidth=1; });
+  // 器皿
+  drawJar(T);
+  // 手指
+  if(S.ptr){ const p=S.ptr;
+    if(S.oil>0&&S.mode!=='wait'){ const r=10+S.oil*16; const rg=cx.createRadialGradient(p.x,p.y,0,p.x,p.y,r*2.2); rg.addColorStop(0,'rgba(255,214,120,.55)'); rg.addColorStop(1,'rgba(255,214,120,0)'); cx.fillStyle=rg; cx.beginPath(); cx.arc(p.x,p.y,r*2.2,0,7); cx.fill(); }
+    if(S.path.length>2&&S.mode==='free'){ cx.strokeStyle='rgba(255,230,180,.25)'; cx.lineWidth=2; cx.beginPath(); S.path.forEach((q,i)=>i?cx.lineTo(q.x,q.y):cx.moveTo(q.x,q.y)); cx.stroke(); cx.lineWidth=1; }
+  }
+  S.puffs.forEach(f=>{ cx.globalAlpha=1-f.t; cx.strokeStyle=f.col; cx.lineWidth=2; cx.beginPath(); cx.arc(f.x,f.y,8+f.t*30,0,7); cx.stroke(); }); cx.globalAlpha=1; cx.lineWidth=1;
+  drawHint(T);
+  // 天亮：睡了的人先起来（4:16）
+  if(S.dawn>0) S.lamps.forEach(l=>{ if(l.ember){ l.y-=S.dawn*1.6; } });
+}
+function drawLamp(l,T){
+  cx.save(); cx.translate(l.x,l.y);
+  let a=l.tilt*(l.state==='tilt'&&!l.fallen?1:1); if(l.state==='tilt'&&!l.fallen) a+=Math.sin(T*3)*.03;
+  // 光晕
+  const f=l.ember?S.dawn:l.f*(l.fallen?0:1);
+  if(f>0){ const fl=l.state==='faint'?(.75+.25*Math.sin(l.flick*1.7)*Math.sin(l.flick*.6)):(.92+.08*Math.sin(l.flick));
+    const R=(26+90*f*fl)*Math.min(1,W/700+.3); const rg=cx.createRadialGradient(0,-14,0,0,-14,R);
+    rg.addColorStop(0,`rgba(255,200,110,${.42*f+(l.covering?.15:0)})`); rg.addColorStop(1,'rgba(255,200,110,0)'); cx.fillStyle=rg; cx.beginPath(); cx.arc(0,-14,R,0,7); cx.fill(); }
+  if(l.spark>0){ for(let k=0;k<8;k++){ const an=k/8*6.28+T, r=22+(2.5-l.spark)*20; cx.fillStyle=`rgba(255,240,200,${l.spark/2.5})`; cx.beginPath(); cx.arc(Math.cos(an)*r,-14+Math.sin(an)*r,2,0,7); cx.fill(); } }
+  if(l.ember&&S.dawn>0){ const rg=cx.createRadialGradient(0,-14,0,0,-14,120*S.dawn); rg.addColorStop(0,'rgba(255,250,230,.7)'); rg.addColorStop(1,'rgba(255,250,230,0)'); cx.fillStyle=rg; cx.beginPath(); cx.arc(0,-14,120*S.dawn,0,7); cx.fill(); }
+  cx.scale(LS,LS); cx.rotate(a);
+  // 陶灯
+  cx.fillStyle=l.ember&&!S.dawn?'#3a2c24':(f>0?'#a8774a':'#5a4a3c'); cx.beginPath(); cx.ellipse(0,0,18,8,0,0,7); cx.fill();
+  cx.beginPath(); cx.moveTo(12,-3); cx.lineTo(24,-6); cx.lineTo(22,2); cx.closePath(); cx.fill();
+  cx.fillStyle='rgba(0,0,0,.3)'; cx.beginPath(); cx.ellipse(-2,-2,6,2.5,0,0,7); cx.fill();
+  // 火苗
+  if(f>0){ const fl=l.state==='faint'?(.7+.3*Math.sin(l.flick*1.7)):(.93+.07*Math.sin(l.flick*1.3));
+    const h=8+26*f*fl, w=3+5*f; cx.translate(22,-6);
+    const fg=cx.createLinearGradient(0,0,0,-h); fg.addColorStop(0,'#fff3c4'); fg.addColorStop(.5,'#ffc04a'); fg.addColorStop(1,'rgba(255,120,40,0)');
+    cx.fillStyle=fg; cx.beginPath(); cx.moveTo(-w,0); cx.quadraticCurveTo(-w,-h*.5,Math.sin(l.flick)*1.5,-h); cx.quadraticCurveTo(w,-h*.5,w,0); cx.quadraticCurveTo(0,w*.8,-w,0); cx.fill(); }
+  else if(l.ember){ cx.translate(22,-6); cx.fillStyle=`rgba(255,90,40,${.45+.25*Math.sin(T*1.5)})`; cx.beginPath(); cx.arc(0,0,3,0,7); cx.fill(); }
+  cx.restore();
+  // 灰心的灯：发抖的小记号
+  if(l.state==='faint'&&!l.ember&&f>0){ cx.strokeStyle='rgba(160,190,230,.35)'; cx.beginPath(); cx.arc(l.x,l.y-14,30+Math.sin(T*4)*3,0,7); cx.stroke(); }
+}
+function drawJar(T){
+  const j=S.jar, waiting=S.mode==='wait';
+  if(waiting){ const bw=j.r*1.4; const bg=cx.createLinearGradient(0,0,0,j.y); bg.addColorStop(0,'rgba(255,240,200,0)'); bg.addColorStop(1,'rgba(255,240,200,.28)');
+    cx.fillStyle=bg; cx.beginPath(); cx.moveTo(j.x-bw*.3,0); cx.lineTo(j.x+bw*.3,0); cx.lineTo(j.x+bw*.6,j.y-j.r*.6); cx.lineTo(j.x-bw*.6,j.y-j.r*.6); cx.fill();
+    for(let k=0;k<6;k++){ const yy=((T*180+k*70)%(j.y-j.r))|0; cx.fillStyle='rgba(255,230,160,.6)'; cx.beginPath(); cx.arc(j.x+Math.sin(k*2.1)*j.r*.25,yy,2,0,7); cx.fill(); } }
+  const pulse=S.oil<0.15?(.5+.5*Math.sin(T*3)):0;
+  const rg=cx.createRadialGradient(j.x,j.y,0,j.x,j.y,j.r*2); rg.addColorStop(0,`rgba(255,210,120,${.12+pulse*.15+S.oil*.2})`); rg.addColorStop(1,'rgba(255,210,120,0)');
+  cx.fillStyle=rg; cx.beginPath(); cx.arc(j.x,j.y,j.r*2,0,7); cx.fill();
+  // 罐身
+  cx.save(); cx.translate(j.x,j.y);
+  const body=new Path2D(); body.moveTo(-j.r*.35,-j.r*.85); body.lineTo(j.r*.35,-j.r*.85); body.quadraticCurveTo(j.r*.3,-j.r*.55,j.r*.8,-j.r*.2); body.quadraticCurveTo(j.r*1.05,j.r*.45,j.r*.5,j.r*.8); body.lineTo(-j.r*.5,j.r*.8); body.quadraticCurveTo(-j.r*1.05,j.r*.45,-j.r*.8,-j.r*.2); body.quadraticCurveTo(-j.r*.3,-j.r*.55,-j.r*.35,-j.r*.85); body.closePath();
+  cx.fillStyle='#4a3626'; cx.fill(body);
+  cx.save(); cx.clip(body); const lv=j.r*.8-(S.oil*j.r*1.65); const og=cx.createLinearGradient(0,lv,0,j.r); og.addColorStop(0,'#ffd27a'); og.addColorStop(1,'#c88a2a'); cx.fillStyle=og; cx.fillRect(-j.r*1.2,lv,j.r*2.4,j.r*2); cx.restore();
+  cx.strokeStyle='#b8894f'; cx.lineWidth=2; cx.stroke(body); cx.lineWidth=1;
+  cx.restore();
+}
+// 不用文字的教学：一只淡淡的「手指」示范动作
+function drawHint(T){
+  if(S.ended) return;
+  let k=null,o=null;
+  for(const key of ['jar','faint','tilt','drift','wind','grief']) if(S.hints[key]==='show'){ k=key; o=key==='jar'?S.jar:S.hintObj&&S.hintObj[key]; }
+  if(S.hints.jar==='show') { k='jar'; o=S.jar; }
+  else if(S.oil<0.12&&S.t>4&&!S.ptr&&S.hints.jar==='done'&&k&&k!=='jar'){ k='jarAgain'; o=S.jar; }
+  if(!k||!o) return;
+  if(k==='wind'&&o.dead){ S.hints.wind='done'; return; }
+  if((k==='faint'&&o.state!=='faint')||(k==='tilt'&&o.state!=='tilt'&&!o.fallen)||(k==='drift'&&o.state!=='drift')) return;
+  const ph=(T%2.2)/2.2; let x,y,press=false;
+  if(k==='jar'||k==='jarAgain'){ x=o.x; y=o.y; press=ph>.2; }
+  else if(k==='faint'){ x=o.x; y=o.y-12; press=ph>.2; }
+  else if(k==='tilt'){ x=o.x; y=o.y+30-ph*80; press=ph>.1&&ph<.8; }
+  else if(k==='drift'){ x=o.x+(o.hx-o.x)*ph; y=o.y+(o.hy-o.y)*ph; press=ph>.05&&ph<.85; }
+  else if(k==='wind'){ x=o.x+(o.tx-o.x)*.5; y=o.y+(o.ty-o.y)*.5; const gx=o.x+o.vx*.35, gy=o.y+o.vy*.35; x=gx; y=gy; press=true; }
+  else if(k==='grief'){ const c=S.lamps.filter(l=>l.grief); if(c.length<1) return; const mx=c.reduce((a,l)=>a+l.x,0)/c.length, my=c.reduce((a,l)=>a+l.y,0)/c.length; const r=Math.max(90,...c.map(l=>D(l.x,l.y,mx,my)+40)); x=mx+Math.cos(ph*6.28)*r; y=my+Math.sin(ph*6.28)*r*.7;
+    cx.strokeStyle='rgba(255,255,255,.15)'; cx.setLineDash([5,7]); cx.beginPath(); cx.ellipse(mx,my,r,r*.7,0,0,ph*6.28); cx.stroke(); cx.setLineDash([]); press=true; }
+  cx.fillStyle=`rgba(255,255,255,${press?.32:.16})`; cx.strokeStyle='rgba(255,255,255,.5)'; cx.lineWidth=2;
+  cx.beginPath(); cx.arc(x,y,press?16:20,0,7); cx.fill(); cx.stroke(); cx.lineWidth=1;
+}
+function mix(a,b,t){ t=Math.max(0,Math.min(1,t)); const pa=[1,3,5].map(i=>parseInt(a.substr(i,2),16)), pb=[1,3,5].map(i=>parseInt(b.substr(i,2),16)); return `rgb(${pa.map((v,i)=>Math.round(v+(pb[i]-v)*t)).join(',')})`; }
+
+// ---------- 天亮与记录 ----------
+function dawnStart(){ if(S.ended) return; S.ended=true; S.ptr=null; S.mode=null; S.endLit=lit(); S.dawnT=0; }
+function showEnd(){
+  const r=S.rec, embers=S.lamps.filter(l=>l.ember).length;
+  $('endv').innerHTML=`天亮了。<br>「你们都是光明之子，都是白昼之子。」<span class="small">（帖前 5:5）</span>`+(embers?`<br><br>「那在基督里死了的人必先复活。」<span class="small">（帖前 4:16）</span>`:'');
+  const txt=`一夜原型 · 试玩记录
+天亮时亮着的灯：${S.endLit}/${7-embers}（另有 ${embers} 盏睡了）
+夜里最少亮着：${r.minLit} 盏
+每 30 秒亮着的灯：${r.litAt.join(' → ')}
+等候（按住器皿）：${r.waits} 次，共 ${Math.round(r.waitSec)} 秒（占整夜 ${Math.round(r.waitSec/NIGHT*100)}%）
+护住灰心的灯：${r.cover}　扶起歪倒的灯：${r.lift}（倒下 ${r.falls} 次）　领回出列的灯：${r.bring}
+挡风：${r.block}（被风吹到 ${r.hits} 次）　画圈聚会：${r.gather}
+手上没油时还去做：${r.empty} 次　自己亮起来的灯：${r.graceSeen} 次
+教学手势：${Object.entries(S.hints).map(([k,v])=>k+(v==='done'?'✓':'·')).join(' ')}
+屏幕：${W}×${H}`;
+  $('rec').textContent=txt; $('end').hidden=false; $('pause').hidden=true;
+}
+
+// ---------- 主循环 ----------
+let last=0;
+function frame(now){
+  const dt=Math.min(.05,(now-(last||now))/1000)*SPEED; last=now;
+  if(S&&!S.paused){
+    if(!S.ended) step(dt);
+    else { S.dawnT+=dt/SPEED; S.dawn=Math.min(1,S.dawnT/4); if(S.dawnT>5&&$('end').hidden) showEnd(); }
+  }
+  draw(now); requestAnimationFrame(frame);
+}
+function pause(on){ if(!S||S.ended) return; S.paused=on; $('paused').hidden=!on; if(on) up({}); }
+$('go').onclick=()=>{ newNight(); $('intro').hidden=true; $('pause').hidden=false; };
+$('again').onclick=()=>{ $('end').hidden=true; newNight(); $('pause').hidden=false; };
+$('pause').onclick=()=>pause(true); $('cont').onclick=()=>pause(false);
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pause(true); });
+$('copy').onclick=()=>{ const t=$('rec').textContent; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>{$('copy').textContent='已复制';},()=>{ const r=document.createRange(); r.selectNode($('rec')); getSelection().removeAllRanges(); getSelection().addRange(r); $('copy').textContent='请长按复制'; }); };
+window.__night={get S(){return S;}};
+layout(); requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
