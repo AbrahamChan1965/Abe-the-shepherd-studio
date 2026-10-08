@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>试玩版 · 第一次游玩（城里 15 天）</title>
+<style>
+:root{--bg:#121009;--panel:#1c1810;--line:#3b3121;--ink:#efe4cc;--dim:#a99c80;--faint:#71664f;--amber:#f2b552;--good:#9ccf8a;--bad:#e8957a;--blue:#9fd0ea;--fs:18px}
+body.big{--fs:22px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Noto Serif SC','Songti SC','STSong','SimSun',serif;font-size:var(--fs);line-height:1.65}
+#app{max-width:880px;margin:0 auto;padding:12px 14px 60px}
+header{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:10px}
+header b{color:var(--amber)}
+.pill{display:inline-block;border:1px solid var(--line);border-radius:14px;padding:1px 10px;font-size:.85em;color:var(--dim)}
+.card{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:12px 14px;margin:10px 0}
+.card h3{margin:0 0 6px;font-size:1.05em;color:var(--amber)}
+.ev{border-left:4px solid var(--amber)}
+.verse{color:#e9d6a6;font-size:.92em}
+.hint{color:var(--blue);font-size:.92em}
+table{width:100%;border-collapse:collapse;font-size:.93em}
+td,th{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+td:nth-child(3),th:nth-child(3){min-width:3.4em}
+@media(max-width:520px){table{font-size:.85em}}
+th{color:var(--dim);font-weight:400;font-size:.85em}
+.oil{font-family:monospace;letter-spacing:1px;color:var(--amber);white-space:nowrap}
+.tag{display:inline-block;font-size:.8em;border-radius:8px;padding:0 6px;margin:1px 2px;border:1px solid var(--faint)}
+.tag.grief{border-color:#b8a0d8;color:#cdb8f0}.tag.rumor{border-color:#d8a07a;color:#f0c0a0}.tag.weak,.tag.idle,.tag.faint,.tag.unk{border-color:#a0b8d0;color:#c0d8f0}.tag.hope{border-color:var(--good);color:var(--good)}.tag.dark{border-color:#777;color:#999}
+.small{font-size:.82em;color:var(--dim)}
+.row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+button{font:inherit;font-size:.95em;min-height:48px;padding:8px 16px;border-radius:10px;border:1px solid #7a6236;background:#2a2114;color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--amber)}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.main{background:var(--amber);color:#1b140b;border-color:var(--amber);font-weight:600}
+button.sel{outline:3px solid var(--amber)}
+.log{font-size:.88em;color:var(--dim);white-space:pre-wrap;max-height:none}
+.log b{color:var(--ink);font-weight:600}
+.up{color:var(--good)}.down{color:var(--bad)}
+.apdots{color:var(--amber);letter-spacing:3px;font-size:1.2em}
+details summary{cursor:pointer;color:var(--dim)}
+.center{text-align:center}
+h1{font-size:1.5em;letter-spacing:.1em;margin:.4em 0}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+'use strict';
+/* ═══════════ 规则（与 tools/sim.js 相同） ═══════════ */
+const NODES=['A','K','J','S','N','L','G','U'];
+const NAME={A:'亚里达古（你）',K:'加力普与克律西',J:'耶孙',S:'西公都',N:'尼肯',L:'一位尊贵的妇女',G:'一位虔敬的希腊人',U:'阿迦特'};
+const SHORT={A:'亚里达古',K:'加力普家',J:'耶孙家',S:'西公都',N:'尼肯家',L:'尊贵妇女家',G:'希腊人家',U:'阿迦特'};
+const EDGES=[['A','K'],['A','J'],['K','J'],['J','S'],['J','N'],['J','L'],['S','L'],['N','G'],['N','U']];
+const ADJ={}; NODES.forEach(n=>ADJ[n]=[]); EDGES.forEach(([a,b])=>{ADJ[a].push(b);ADJ[b].push(a);});
+function params(diff){ const L=diff==='light'; return {
+  AP:3,startOil:{A:4,J:4,K:3,S:3,N:3,L:3,G:3,U:2},startBread:8,isoDays:4,
+  griefSpread:L?0.20:0.24,griefDrain:L?0.4:0.45,rumorSpread:L?0.30:0.40,windHits:2,chronic:L?0.15:0.2,
+  upkeepBase:2,workGain:2,gatherAP:2,gatherAway:3,grace:L?0.12:0.08 }; }
+const TAGN={grief:'没有指望的忧伤',rumor:'流言',idle:'不守规矩',weak:'软弱',faint:'灰心'};
+const CARE={comfort:'陪伴',admonish:'警戒',encourage:'勉励',support:'扶助',refute:'辩明'};
+
+/* ═══════════ 随机数（有种子，可重现） ═══════════ */
+function rnd(){ let s=G.rs>>>0; s=(s*1664525+1013904223)>>>0; G.rs=s; return s/4294967296; }
+const pick=a=>a[Math.floor(rnd()*a.length)];
+
+/* ═══════════ 状态 ═══════════ */
+let G=null;
+const SAVEKEY='t1proto1';
+function newGame(diff,seed){
+  const P=params(diff);
+  G={v:1,diff,seed,rs:seed>>>0,day:0,phase:1,pday:0,bread:P.startBread,timothy:0,nodes:{},hist:[],log:[],
+     ap:0,acts:[],gathered:false,stage:'intro',paul:{money:4,alone:false,turn:0,ap:0,sent:null,log:[]},
+     times:[],t0:Date.now(),dayStart:0,collapsed:false,minStanding:8,starve:0,choices:[]};
+  NODES.forEach(n=>G.nodes[n]={oil:P.startOil[n],tags:[],untouched:0,zeroDays:0,withdrawn:false,hope:false,pausedUntil:0,prayed:[]});
+  snapshot();
+}
+const P=()=>params(G.diff);
+const has=(n,t)=>G.nodes[n].tags.includes(t);
+const del=(n,t)=>{ const x=G.nodes[n]; x.tags=x.tags.filter(z=>z!==t); };
+function addTag(n,t){ const x=G.nodes[n]; if(x.withdrawn) return false; if(x.hope&&(t==='grief'||t==='rumor')) return false; if(x.tags.includes(t)) return false; x.tags.push(t); return true; }
+const lit=n=>{ const x=G.nodes[n]; return !x.withdrawn&&x.oil>=2; };
+const standingCount=()=>NODES.filter(n=>lit(n)&&!has(n,'grief')).length;
+function upkeep(){ let u=P().upkeepBase; NODES.forEach(n=>{ if(has(n,'idle')) u++; if(has(n,'weak')) u+=0.5; }); return Math.ceil(u); }
+function income(){ let i=0; NODES.forEach(n=>{ const x=G.nodes[n]; if(!x.withdrawn&&x.oil>=2&&!has(n,'idle')&&!has(n,'weak')) i+=0.34; }); return Math.floor(i); }
+function snapshot(){ G.hist.push({d:G.day,nodes:JSON.parse(JSON.stringify(G.nodes)),bread:G.bread,standing:standingCount()}); }
+const say=(s,cls)=>G.log.push(cls?`<span class="${cls}">${s}</span>`:s);
+const oilTxt=n=>{ const x=G.nodes[n]; return '●'.repeat(x.oil)+'○'.repeat(5-x.oil); };
+function chg(n,d,why){ const x=G.nodes[n]; const b=x.oil; x.oil=Math.max(0,Math.min(5,x.oil+d)); if(x.oil!==b) say(`${SHORT[n]} 灯油 ${b}→${x.oil}${why?'（'+why+'）':''}`,x.oil>b?'up':'down'); }
+
+/* ═══════════ 事件 ═══════════ */
+function drawEvent(){
+  const d=G.day,N=G.nodes;
+  if(d<=2) return {t:'教学日',body:d===1?'保罗昨夜被弟兄们送走了。今天先学两件事：做工，和探访。':'今天多学一件事：聚会。',v:''};
+  if(d%7===0) return {t:'安息的一天',body:'今天没有新的事件。可以慢慢看看每一户的情形。',v:''};
+  if(G.phase===1&&d===6){ addTag('N','grief'); return {t:'埃拉睡了',body:'尼肯五岁的小女儿埃拉，夜里睡了，没有再醒过来。她是城里第一个在主里睡了的人。尼肯问：「主来的那天，她会不会错过？」没有人答得出来。',v:'帖前 4:13「论到睡了的人……」——这一段，保罗还没有写。'}; }
+  if(G.phase===2&&G.pday===3){ addTag('K','grief'); return {t:'加力普睡了',body:'加力普夜里还好好的，早上没有再醒过来。克律西的哭声把整条街都叫醒了。他常说：「等主来了，我第一个跑去迎接。」',v:''}; }
+  const alive=NODES.filter(n=>!N[n].withdrawn); if(!alive.length) return {t:'夜很深',body:'',v:''};
+  if(rnd()<P().grace){
+    if(rnd()<.5){ G.bread+=3; return {t:'门口的饼',body:'清早开门，门口放着一篮饼，不知是谁放的。（公共的饼 +3）',v:'这不是你挣来的。'}; }
+    const low=alive.slice().sort((a,b)=>N[a].oil-N[b].oil)[0]; chg(low,2,'远方的问候'); return {t:'远方的问候',body:`一位从腓立比来的弟兄带来问候，特地去看了${SHORT[low]}。`,v:''};
+  }
+  const r=rnd();
+  if(r<0.35){ const hit=[]; for(let i=0;i<P().windHits;i++){ const n=pick(alive); hit.push(n); if(N[n].oil<=1) chg(n,-1,'逼迫'); }
+    return {t:'逼迫',body:`本地人在街上推搡信主的人。受冲击的：${[...new Set(hit)].map(n=>SHORT[n]).join('、')}。灯油还有 2 以上的，摇了一摇，没有暗下去；快灭的灯才会被吹暗。`,v:'帖前 2:14「你们也受了本地人的苦害」'}; }
+  if(r<0.55){ const n=pick(alive); addTag(n,'rumor'); return {t:'流言',body:`${SHORT[n]}那一带有人在传：保罗是骗了钱就跑的人。流言会沿着往来的路传开，要去「辩明」。`,v:'帖前 2:3「我们的劝勉不是出于错误，不是出于污秽，也不是用诡诈。」'}; }
+  if(r<0.72){ const c=alive.filter(n=>N[n].oil<=2); if(c.length){ const n=pick(c); addTag(n,'weak'); return {t:'宴席的邀请',body:`公会的宴席又来请人了。${SHORT[n]}的灯本来就暗，这一回软弱了。`,v:'帖前 4:3「远避淫行」'}; } return {t:'宴席的邀请',body:'公会的宴席又来请人了。这一回，大家都推辞了。',v:''}; }
+  if(r<0.86){ const n=pick(alive); if(G.phase>=2){ addTag(n,'idle'); return {t:'不做工了',body:`${SHORT[n]}说：主快来了，还做什么工？`,v:'帖前 4:11「亲手做工」'}; } addTag(n,'faint'); return {t:'灰心',body:`${SHORT[n]}说：保罗不会回来了。`,v:'帖前 3:5「恐怕那诱惑人的到底诱惑了你们」'}; }
+  const n=pick(alive); addTag(n,'faint'); return {t:'灰心',body:`${SHORT[n]}好几天没来聚会，说心里很累。`,v:''};
+}
+
+/* ═══════════ 行动 ═══════════ */
+function apMax(){ return P().AP+(G.timothy>0?2:0); }
+function canGather(){ return G.day>=2; }
+function doWork(){ G.ap-=1; G.bread+=P().workGain; say('你做工，公共的饼 +2'); G.acts.push('做工'); }
+function doGather(host){
+  const cost=host==='J'?P().gatherAP:P().gatherAway; if(G.ap<cost||G.bread<1) return;
+  G.ap-=cost; G.bread--; G.gathered=true; G.acts.push('在'+SHORT[host]+'聚会');
+  say(`在${SHORT[host]}聚会（饼 −1）`);
+  [host,...ADJ[host]].forEach(n=>{ const x=G.nodes[n]; if(x.withdrawn) return; chg(n,n===host?2:1,'聚会'); x.untouched=0; if(n===host&&has(n,'rumor')){ del(n,'rumor'); say(`${SHORT[n]}的流言散了`,'up'); } if(has(n,'grief')){ x.pausedUntil=Math.max(x.pausedUntil,G.day); say(`${SHORT[n]}和大家一起哀哭（今天忧伤不扩散）`); } });
+}
+function doVisit(n,c){
+  const x=G.nodes[n]; G.ap-=1; x.untouched=0; G.acts.push(CARE[c]+SHORT[n]);
+  if(x.withdrawn){ x.withdrawn=false; x.oil=1; x.zeroDays=0; say(`你把${SHORT[n]}从暗处找回来了（灯油 1）`,'up'); return; }
+  if(c==='comfort'){ if(has(n,'grief')){ x.pausedUntil=G.day+1; say(`你陪着${SHORT[n]}。今天和明天，忧伤不掉油、不扩散。`); } else chg(n,1,'探访'); return; }
+  if(c==='refute'){ if(has(n,'rumor')){ del(n,'rumor'); say(`你在${SHORT[n]}辩明了流言`,'up'); } else say(`${SHORT[n]}那里没有流言`); return; }
+  const want={admonish:'idle',encourage:'faint',support:'weak'}[c];
+  if(c==='support'){ G.bread--; say('扶助：饼 −1'); }
+  if(has(n,want)){ del(n,want); chg(n,1,CARE[c]+'对了'); }
+  else if(['idle','faint','weak'].some(t=>has(n,t))){ chg(n,-1,CARE[c]+'用错了，伤了人'); }
+  else chg(n,1,'探访');
+}
+
+/* ═══════════ 一天结束（与模拟相同的顺序） ═══════════ */
+function endDay(){
+  const N=G.nodes,p=P(); say('<b>── 夜里 ──</b>');
+  NODES.forEach(n=>{ const x=N[n]; if(x.withdrawn||x.oil>=3) return; if(ADJ[n].filter(m=>N[m].oil>=4&&!N[m].withdrawn).length>=2) chg(n,1,'两旁的弟兄相爱'); });
+  NODES.forEach(n=>{ const x=N[n]; x.untouched++; if(x.untouched>p.isoDays){ chg(n,-1,'太久没人来往'); x.untouched=1; } });
+  let spread=false;
+  NODES.forEach(n=>{ const x=N[n]; if(!has(n,'grief')||x.withdrawn||x.pausedUntil>=G.day) return; if(rnd()<p.griefDrain) chg(n,-1,'没有指望的忧伤');
+    if(!spread&&rnd()<p.griefSpread){ const t=ADJ[n].filter(m=>!has(m,'grief')&&!N[m].withdrawn&&!N[m].hope); if(t.length){ const m=pick(t); addTag(m,'grief'); spread=true; say(`忧伤传到了${SHORT[m]}`,'down'); } } });
+  NODES.forEach(n=>{ const x=N[n]; if(!has(n,'rumor')||x.withdrawn) return; if(rnd()<.5) chg(n,-1,'流言'); if(rnd()<p.rumorSpread){ const t=ADJ[n].filter(m=>!N[m].withdrawn); if(t.length){ const m=pick(t); if(addTag(m,'rumor')) say(`流言传到了${SHORT[m]}`,'down'); } } });
+  NODES.forEach(n=>{ const x=N[n]; if(x.withdrawn) return; if((has(n,'faint')||has(n,'weak'))&&rnd()<p.chronic) chg(n,-1,has(n,'faint')?'灰心':'软弱'); });
+  const inc=income(),up=upkeep(); G.bread+=inc-up; say(`饼：收入 +${inc}，开销 −${up}，剩 ${Math.max(0,G.bread)}`);
+  if(G.bread<0){ G.bread=0; G.starve++; const a=NODES.filter(n=>!N[n].withdrawn).sort((a,b)=>N[a].oil-N[b].oil); if(a.length&&addTag(a[0],'weak')) say(`饼不够了，${SHORT[a[0]]}挨饿，变得软弱`,'down'); }
+  NODES.forEach(n=>{ const x=N[n]; if(x.withdrawn) return; if(x.oil===0){ if(++x.zeroDays>=3){ x.withdrawn=true; x.tags=[]; say(`${SHORT[n]}退到暗处了（还可以去找回来）`,'down'); } } else x.zeroDays=0; });
+  NODES.forEach(n=>{ const x=N[n]; x.prayed=x.prayed.filter(q=>{ if(--q.t<=0){ if(!x.withdrawn&&rnd()<.75) chg(n,1,'不知从哪里来的平安'); return false; } return true; }); });
+  const st=standingCount(), dark=NODES.filter(n=>N[n].withdrawn||N[n].oil===0).length;
+  G.minStanding=Math.min(G.minStanding,st); if(dark>=4) G.collapsed=true;
+  snapshot();
+}
+
+/* ═══════════ 介面 ═══════════ */
+const $=s=>document.querySelector(s);
+const app=$('#app');
+let selHost='J', selNode=null;
+function save(){ try{ localStorage.setItem(SAVEKEY,JSON.stringify(G)); }catch(e){} }
+function load(){ try{ return JSON.parse(localStorage.getItem(SAVEKEY)); }catch(e){ return null; } }
+function tagHtml(n){
+  const x=G.nodes[n]; if(x.withdrawn) return '<span class="tag dark">退到暗处</span>';
+  let s=''; if(x.hope) s+='<span class="tag hope">盼望</span>';
+  x.tags.forEach(t=>{ if(G.diff==='medium'&&(t==='idle'||t==='weak')) s+='<span class="tag unk">没来做工（原因不明）</span>'; else s+=`<span class="tag ${t}">${TAGN[t]}</span>`; });
+  if(x.oil===0) s+='<span class="tag dark">余烬</span>';
+  return s||'<span class="small">安稳</span>';
+}
+function boardTable(nodes,stale){
+  return `<table><tr><th>人家</th><th>灯油</th><th>状况</th><th>邻居</th>${stale?'':'<th>多久没人来</th>'}</tr>`+NODES.map(n=>{ const x=nodes[n];
+    return `<tr><td>${NAME[n]}</td><td class="oil">${x.withdrawn?'—':'●'.repeat(x.oil)+'○'.repeat(5-x.oil)}</td><td>${stale?staleTags(x):tagHtml(n)}</td><td class="small">${ADJ[n].map(m=>SHORT[m]).join('、')}</td>${stale?'':`<td class="small">${x.untouched} 天</td>`}</tr>`; }).join('')+'</table>';
+}
+function staleTags(x){ if(x.withdrawn) return '<span class="tag dark">退到暗处</span>'; return x.tags.map(t=>`<span class="tag ${t}">${TAGN[t]}</span>`).join('')||'<span class="small">安稳</span>'; }
+function head(){
+  const st=standingCount();
+  return `<header><div><b>${G.stage==='paul'?'保罗':'帖撒罗尼迦'}</b>　第 ${G.day} 天${G.timothy>0&&G.stage!=='paul'?'　<span class="pill">提摩太在城里（还有 '+G.timothy+' 天）</span>':''}</div>
+  <div>站立 <b>${st}</b>/8　饼 <b>${G.bread}</b>　<span class="pill">${G.diff==='light'?'轻度':'中度'}</span>
+  <button style="min-height:36px;padding:2px 10px;font-size:.8em" onclick="document.body.classList.toggle('big')">字</button></div></header>`;
+}
+
+/* 开始画面 */
+function renderIntro(){
+  const sv=load();
+  app.innerHTML=`<h1 class="center">试玩版 · 第一次游玩</h1>
+  <p class="center small">纯文字与数字 · 城里 15 天 ＋ 保罗 5 个回合 · 预计 35–40 分钟</p>
+  <div class="card"><h3>你要做的事</h3>
+  保罗被迫在夜里离开了帖撒罗尼迦。你是亚里达古。城里有八户新信主的人家，每一户是一盏灯。<br>
+  每天你有 <b>3 个行动</b>：做工（挣公共的饼）、探访一户（选一种照顾）、或召集聚会。<br>
+  <span class="hint">没有时间限制。每一步想多久都可以。</span></div>
+  <div class="card"><h3>几条规则</h3>
+  · 逼迫只会吹暗<b>快灭的灯</b>（灯油 0–1）；灯油还有 2 以上的，摇一摇，不会暗下去。<span class="verse">（帖前 1:6）</span><br>
+  · 让灯暗下去的，是<b>太久没人来往</b>（超过 4 天）、流言、灰心、软弱，还有没有指望的忧伤。<br>
+  · 灯油是领受来的，不是挣来的：聚会和探访能添油。<br>
+  · 一户暗灯若两旁都有很亮的邻居，会<b>自己亮一点</b>。<span class="verse">（帖前 4:9「你们自己蒙了神的教训，叫你们彼此相爱」）</span><br>
+  · 灯油最低是 0（余烬）。连续 3 天是 0，那一户会退到暗处，但还可以去找回来。<br>
+  · 每 3 天，画面会转到远方的保罗。他看到的，是 6 天前的城。</div>
+  <div class="row">
+    <button class="main" onclick="start('light')">开始（轻度）</button>
+    <button onclick="start('medium')">开始（中度）</button>
+    ${sv&&sv.stage!=='end'?`<button onclick="resume()">继续上次（第 ${sv.day} 天）</button>`:''}
+  </div>`;
+}
+function start(diff){ newGame(diff,(Date.now()%100000)+1); nextDay(); }
+function resume(){ G=load(); if(!G) return; if(G.stage==='paul') renderPaul(); else if(G.stage==='end') renderEnd(); else renderDay(); }
+window.start=start; window.resume=resume;
+
+/* 新的一天 */
+function nextDay(){
+  G.day++; if(G.phase===2) G.pday++;
+  G.ap=apMax(); G.acts=[]; G.gathered=false; G.log=[]; G.stage='day'; G.dayStart=Date.now();
+  G.ev=drawEvent(); save(); renderDay();
+}
+function renderDay(){
+  const ev=G.ev, apDots='●'.repeat(G.ap)+'○'.repeat(Math.max(0,apMax()-G.ap));
+  const tut= G.day===1?'<p class="hint">第一天：先试试「做工」和「探访」。探访时要选一种照顾；没有状况的人家，探访就能添一点灯油。</p>':
+             G.day===2?'<p class="hint">第二天：「聚会」花 2 个行动和 1 个饼，主办的那一家灯油 +2，相邻的人家各 +1。在耶孙家以外的地方聚会，要 3 个行动。</p>':
+             G.day===3?'<p class="hint">从今天起，每天会有一件事发生。读一读，再决定怎么用你的行动。</p>':'';
+  app.innerHTML=head()+`
+  <div class="card ev"><h3>${ev.t}</h3>${ev.body}${ev.v?`<div class="verse">${ev.v}</div>`:''}</div>${tut}
+  <div class="card"><h3>城里的八户人家</h3>${boardTable(G.nodes,false)}</div>
+  <div class="card"><h3>你的行动　<span class="apdots">${apDots}</span></h3>
+    <div class="small">今天已做：${G.acts.join('、')||'还没有'}　·　明天的饼开销约 ${upkeep()}，收入约 ${income()}</div>
+    <div class="row">
+      <button ${G.ap<1?'disabled':''} onclick="act('work')">做工（饼 +2）</button>
+      <button ${G.ap<1?'disabled':''} onclick="act('visit')">探访一户…</button>
+      <button ${(!canGather()||G.ap<2||G.bread<1||G.gathered)?'disabled':''} onclick="act('gather')">聚会…</button>
+    </div>
+    <div id="sub"></div>
+    ${G.log.length?`<div class="log" style="margin-top:8px">${G.log.join('\n')}</div>`:''}
+    <div class="row"><button class="main" onclick="finishDay()">${G.ap>0?'结束这一天（还有 '+G.ap+' 个行动没用）':'结束这一天'}</button></div>
+  </div>`;
+}
+function act(k){
+  const sub=$('#sub');
+  if(k==='work'){ doWork(); save(); renderDay(); return; }
+  if(k==='gather'){
+    sub.innerHTML=`<div class="card"><b>在哪一家聚会？</b><div class="small">主办的那一家 +2，相邻各家 +1；需要 1 个饼。</div><div class="row">${NODES.filter(n=>!G.nodes[n].withdrawn).map(n=>{ const c=n==='J'?2:3; return `<button ${G.ap<c?'disabled':''} onclick="gat('${n}')">${SHORT[n]}（${c} 个行动）</button>`; }).join('')}<button onclick="renderDay()">算了</button></div></div>`; return; }
+  if(k==='visit'){
+    sub.innerHTML=`<div class="card"><b>去看哪一家？</b><div class="row">${NODES.map(n=>`<button onclick="vis('${n}')">${SHORT[n]}</button>`).join('')}<button onclick="renderDay()">算了</button></div></div>`; return; }
+}
+function gat(n){ doGather(n); save(); renderDay(); }
+function vis(n){
+  const x=G.nodes[n]; const sub=$('#sub');
+  if(x.withdrawn){ doVisit(n,'comfort'); save(); renderDay(); return; }
+  const cares=[['comfort','陪伴','对忧伤：陪他两天；对安稳的人家：添一点油'],['admonish','警戒','对不守规矩的人'],['encourage','勉励','对灰心的人'],['support','扶助','对软弱的人（要 1 个饼）'],['refute','辩明','对流言']];
+  sub.innerHTML=`<div class="card"><b>${NAME[n]}</b>　${tagHtml(n)}<div class="small">用哪一种照顾？对错了人，会伤人（5:14）。</div><div class="row">${cares.map(([k,t,d])=>`<button ${k==='support'&&G.bread<1?'disabled':''} onclick="care('${n}','${k}')">${t}<div class="small">${d}</div></button>`).join('')}<button onclick="renderDay()">算了</button></div></div>`;
+}
+function care(n,c){ doVisit(n,c); save(); renderDay(); }
+function finishDay(){
+  if(G.ap>0&&!confirm('还有 '+G.ap+' 个行动没用。确定结束这一天吗？')) return;
+  G.times.push({k:'城里第'+G.day+'天',s:Math.round((Date.now()-G.dayStart)/1000)});
+  G.choices.push({d:G.day,acts:G.acts.slice()});
+  endDay();
+  if(G.timothy>0) G.timothy--;
+  G.stage='night'; save(); renderNight();
+}
+window.act=act; window.gat=gat; window.vis=vis; window.care=care; window.finishDay=finishDay;
+function renderNight(){
+  const next=G.day%3===0?'转到远方的保罗 ▶':(G.day>=15?'看这一次的结果 ▶':'迎接新的一天 ▶');
+  app.innerHTML=head()+`<div class="card"><h3>第 ${G.day} 天，夜里</h3><div class="log">${G.log.join('\n')}</div></div>
+  <div class="card"><h3>现在的情形</h3>${boardTable(G.nodes,false)}</div>
+  <div class="row"><button class="main" onclick="afterNight()">${next}</button></div>`;
+}
+function afterNight(){ if(G.day%3===0) startPaul(); else if(G.day>=15) finish(); else nextDay(); }
+window.afterNight=afterNight;
+
+/* ═══════════ 保罗的回合 ═══════════ */
+const PAULTURN=[null,
+  {where:'庇哩亚 → 雅典',text:'帖撒罗尼迦的反对者追到庇哩亚。弟兄们把保罗送上船，到了雅典。他一个人在满城的偶像中间等候。',v:'徒 17:13-16'},
+  {where:'雅典',text:'保罗很想回去。他可以花一个行动试着北上——可是路被拦住了。',v:'帖前 2:18「我保罗有一两次要去，只是撒但阻挡了我们。」',north:true},
+  {where:'雅典',text:'保罗不能再忍了。要不要打发提摩太回帖撒罗尼迦？他会在城里帮忙 6 天，但保罗从此独自一人，每回合只剩 1 个行动。',v:'帖前 3:1-2「我们既不能再忍，就愿意独自等在雅典，打发……提摩太前去，坚固你们」',send:true},
+  {where:'雅典 → 哥林多',text:'保罗到了哥林多，遇见亚居拉和百基拉，和他们一同做帐棚。在这里做工，一回合可以多挣一点。',v:'徒 18:1-3',corinth:true},
+  {where:'哥林多',text:'保罗白天缝帐棚，夜里为远方祷告。提摩太还没有回来，他不知道城里怎样了。',v:'帖前 3:10「我们昼夜切切地祈求……」',corinth:true}
+];
+function startPaul(){
+  const pl=G.paul; pl.turn++; G.stage='paul'; G.paulStart=Date.now();
+  pl.ap=pl.alone?1:2; pl.log=[]; pl.cost=2;
+  pl.money-=pl.cost; pl.log.push(`三天的饭钱 −${pl.cost}`);
+  save(); renderPaul();
+}
+function renderPaul(){
+  const pl=G.paul, T=PAULTURN[pl.turn]||PAULTURN[5];
+  const oldIdx=Math.max(0,G.hist.length-1-6), old=G.hist[oldIdx];
+  const mustWork=pl.money<0;
+  app.innerHTML=`<header><div><b>保罗</b>　${T.where}　<span class="pill">第 ${pl.turn} 回合</span></div><div>保罗的钱 <b>${pl.money}</b>　行动 <span class="apdots">${'●'.repeat(pl.ap)}</span></div></header>
+  <div class="card ev"><h3>${T.where}</h3>${T.text}<div class="verse">${T.v}</div></div>
+  <div class="card"><h3>保罗收到的消息</h3><div class="small">一位旅人带来的消息——那是 <b>${old.d?'第 '+old.d+' 天':'保罗离开那夜'}</b>的城（现在是第 ${G.day} 天）。他看不到之后发生的事。</div>${boardTable(old.nodes,true)}</div>
+  <div class="card"><h3>保罗能做的事</h3>
+    ${mustWork?'<p class="hint">钱不够付饭钱了，保罗得先做工。</p>':''}
+    <div class="row">
+      <button ${pl.ap<1?'disabled':''} onclick="pAct('work')">做工（钱 +${T.corinth?4:3}）</button>
+      <button ${pl.ap<1||mustWork?'disabled':''} onclick="pAct('pray')">为一户祷告…</button>
+      ${T.north?`<button ${pl.ap<1||mustWork?'disabled':''} onclick="pAct('north')">试着北上</button>`:''}
+    </div>
+    ${T.send&&pl.sent===null?`<div class="row"><button class="main" onclick="pSend(true)">打发提摩太去</button><button onclick="pSend(false)">留提摩太在身边</button></div>`:''}
+    <div id="psub"></div>
+    <div class="log" style="margin-top:8px">${pl.log.join('\n')}</div>
+    <div class="row"><button class="main" ${T.send&&pl.sent===null?'disabled':''} onclick="endPaul()">回到帖撒罗尼迦 ▶</button></div>
+    <p class="small">保罗的祷告：1–3 天后，那一户可能会多一点平安（灯油 +1）。不一定每次都看得见。</p>
+  </div>`;
+}
+function pAct(k){
+  const pl=G.paul, T=PAULTURN[pl.turn]||PAULTURN[5];
+  if(k==='work'){ pl.ap--; const g=T.corinth?4:3; pl.money+=g; pl.log.push(`保罗做工，钱 +${g}`); save(); renderPaul(); return; }
+  if(k==='north'){ pl.ap--; pl.log.push('保罗往北走了一天，路被拦住了，只好回来。'); G.choices.push({paul:pl.turn,a:'北上被拦'}); save(); renderPaul(); return; }
+  if(k==='pray'){ $('#psub').innerHTML=`<div class="card"><b>为哪一家祷告？</b>（照他手上的旧消息）<div class="row">${NODES.map(n=>`<button onclick="pPray('${n}')">${SHORT[n]}</button>`).join('')}<button onclick="renderPaul()">算了</button></div></div>`; }
+}
+function pPray(n){ const pl=G.paul; pl.ap--; G.nodes[n].prayed.push({t:1+Math.floor(rnd()*3)}); pl.log.push(`保罗为${SHORT[n]}祷告`); G.choices.push({paul:pl.turn,a:'祷告:'+n}); save(); renderPaul(); }
+function pSend(y){ const pl=G.paul; pl.sent=y; if(y){ pl.alone=true; pl.log.push('提摩太往北去了。保罗从此独自一人。'); } else pl.log.push('提摩太留在保罗身边。'); G.choices.push({paul:pl.turn,a:y?'打发提摩太':'留下提摩太'}); save(); renderPaul(); }
+function endPaul(){
+  const pl=G.paul; G.times.push({k:'保罗第'+pl.turn+'回合',s:Math.round((Date.now()-G.paulStart)/1000)});
+  if(pl.turn===3){ G.phase=2; G.pday=0; if(pl.sent) G.timothy=6; }
+  if(G.day>=15){ finish(); return; }
+  nextDay();
+}
+window.pAct=pAct; window.pPray=pPray; window.pSend=pSend; window.endPaul=endPaul;
+
+/* ═══════════ 第一次游玩结束 ═══════════ */
+function finish(){ G.stage='end'; save(); renderEnd(); }
+function renderEnd(){
+  const st=standingCount(), total=Math.round((Date.now()-G.t0)/60000);
+  const sumCity=G.times.filter(t=>t.k.startsWith('城里')).reduce((a,t)=>a+t.s,0), nCity=G.times.filter(t=>t.k.startsWith('城里')).length;
+  const sumPaul=G.times.filter(t=>t.k.startsWith('保罗')).reduce((a,t)=>a+t.s,0), nPaul=G.times.filter(t=>t.k.startsWith('保罗')).length;
+  const rec=`试玩记录（第一次游玩）
+难度：${G.diff==='light'?'轻度':'中度'}　种子：${G.seed}
+第 15 天结束时站立：${st}/8　途中最低：${G.minStanding}/8　曾经四户以上同时暗下：${G.collapsed?'是':'否'}　缺粮天数：${G.starve}
+提摩太：${G.paul.sent?'打发去了':'留在保罗身边'}
+城里每天平均用时：${nCity?Math.round(sumCity/nCity):0} 秒（共 ${nCity} 天）
+保罗每回合平均用时：${nPaul?Math.round(sumPaul/nPaul):0} 秒（共 ${nPaul} 回合）
+从开始到现在：约 ${total} 分钟（含中途离开的时间）
+各段用时：${G.times.map(t=>t.k+' '+t.s+'秒').join('；')}
+每天的行动：${G.choices.filter(c=>c.d).map(c=>'第'+c.d+'天['+c.acts.join('、')+']').join(' ')}`;
+  app.innerHTML=head()+`<h1 class="center">第一次游玩结束</h1>
+  <div class="card"><h3>第 15 天的城</h3>${boardTable(G.nodes,false)}</div>
+  <div class="card"><h3>接下来（下一次游玩，尚未制作）</h3>提摩太带着城里的问题南下。保罗在哥林多一边缝帐棚，一边等候。信要写了。城里还要撑过信差在路上的三个星期。</div>
+  <div class="card"><h3>试玩记录</h3><div class="small">请把下面这段复制给我们，用来调整节奏和难度。</div><pre class="log" id="rec" style="user-select:all">${rec}</pre>
+  <div class="row"><button class="main" onclick="copyRec()">复制试玩记录</button><button onclick="localStorage.removeItem('${SAVEKEY}');location.reload()">重新开始</button></div></div>`;
+}
+function copyRec(){ const t=$('#rec').textContent; (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>alert('已复制'),()=>{ const r=document.createRange(); r.selectNode($('#rec')); getSelection().removeAllRanges(); getSelection().addRange(r); alert('请长按或按 Ctrl+C 复制'); }); }
+window.copyRec=copyRec;
+
+renderIntro();
+</script>
+</body>
+</html>
