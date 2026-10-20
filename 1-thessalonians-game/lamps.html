@@ -611,10 +611,10 @@ class Riot{
     this.paul={x:0,y:0,set:false}; this.rec={seen:0,coverSec:0}; this.pullJ=0; this.seenT=0;
   }
   layout(){ this.lamps=cityLamps(); this.jar=jarPos(); const [mx,my]=hpos([.06,.96]); this.market={x:mx,y:my}; this.J=this.lamps[2]; this.gate={x:12,y:this.lamps[2].hy-10};
-    if(this.paul&&!this.paul.drag&&this.phase<4){ this.paul.x=this.J.x+64*LS; this.paul.y=this.J.y-64*LS; } }
+    if(this.paul&&!this.paul.drag&&this.phase<4){ [this.paul.x,this.paul.y]=hpos([.60,.50]); } }
   hidden(){ return this.mode==='lamp'&&PTR&&D(PTR.x,PTR.y,this.paul.x+10*LS,this.paul.y)<70*LS&&this.oil>0; }
   step(dt){
-    this.t+=dt; const P=this.paul; if(!P.set){ P.set=true; P.x=this.J.x+64*LS; P.y=this.J.y-64*LS; }
+    this.t+=dt; const P=this.paul; if(!P.set){ P.set=true; [P.x,P.y]=hpos([.60,.50]); }
     if(this.mode==='wait') this.oil=Math.min(1,this.oil+.42*dt);
     const hid=this.hidden(); if(hid){ this.oil=Math.max(0,this.oil-.08*dt); this.rec.coverSec+=dt; }
     this.torches.forEach(tc=>{ tc.ph+=dt; });
@@ -639,7 +639,7 @@ class Riot{
     cx.fillStyle='rgba(50,40,30,.9)'; cx.fillRect(0,this.gate.y-40*LS,12,70*LS);
     this.lamps.forEach(l=>{ if(l.i===2&&this.pullJ>0){ const o={...l,x:lerp(l.x,this.g.x,this.pullJ*.6),y:lerp(l.y,this.g.y,this.pullJ*.6)}; drawLamp(o,T,{name:true}); } else drawLamp(l,T,{name:true}); });
     const hid=this.hidden();
-    if(this.phase<5){ const S={x:P.x+40*LS,y:P.y+8*LS};
+    if(this.phase<5){ const S={x:P.x+Math.min(40*LS,W*.09),y:P.y+8*LS};
       if(this.phase===4&&P.drag){ S.x=lerp(S.x,P.x-18*LS,.5); }
       [[P,'保罗'],[S,'西拉']].forEach(([q,n])=>drawLamp({x:q.x,y:q.y,f:hid?0:.85,flick:T*9,state:'ok',name:hid?'':n},T,{scale:.85,name:true})); if(hid){ cx.fillStyle='rgba(20,16,12,.85)'; cx.beginPath(); cx.ellipse(P.x+12*LS,P.y-16*LS,44*LS,26*LS,0,0,7); cx.fill(); } }
     else { const k=Math.min(1,this.awayT/5); smallLight(lerp(this.gate.x+10,-60,k),this.gate.y,30*LS*(1-k*.8),.6*(1-k)); }
