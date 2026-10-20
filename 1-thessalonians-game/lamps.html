@@ -221,10 +221,10 @@ function drawLamp(l,T,o){
   if(o.name&&l.name){ cx.font=`${Math.round(11*LS)}px sans-serif`; cx.textAlign='center'; cx.fillStyle='rgba(239,228,204,.42)'; cx.fillText(l.name,l.x,l.y+22*s); }
 }
 function drawChild(l,T,s){
-  const gold=WORLD&&WORLD.rules.hope, x=l.x+30*s, y=l.y+4*s, rise=(l.childRise||0);
+  const gold=WORLD&&WORLD.rules.hope, x=l.x+34*s, y=l.y+4*s, rise=(l.childRise||0);
   cx.save(); cx.translate(x,y-rise);
   if(gold){ const rg=cx.createRadialGradient(0,-6*s,0,0,-6*s,34*s); rg.addColorStop(0,'rgba(255,225,150,.45)'); rg.addColorStop(1,'rgba(255,225,150,0)'); cx.fillStyle=rg; cx.beginPath(); cx.arc(0,-6*s,34*s,0,7); cx.fill(); }
-  cx.scale(s*.6,s*.6); cx.fillStyle='#4a382c'; cx.beginPath(); cx.ellipse(0,0,18,8,0,0,7); cx.fill();
+  cx.scale(s*.75,s*.75); cx.fillStyle='#4a382c'; cx.beginPath(); cx.ellipse(0,0,18,8,0,0,7); cx.fill();
   cx.beginPath(); cx.moveTo(12,-3); cx.lineTo(24,-6); cx.lineTo(22,2); cx.closePath(); cx.fill();
   cx.translate(22,-6); cx.fillStyle=gold?`rgba(255,215,120,${.75+.2*Math.sin(T*1.5)})`:`rgba(255,90,40,${.45+.25*Math.sin(T*1.5)})`; cx.beginPath(); cx.arc(0,0,gold?5:3.5,0,7); cx.fill();
   cx.restore();
@@ -701,21 +701,21 @@ class Athens{
 // 2-4 哥林多：缝帐棚
 // ======================================================================
 class Tents{
-  constructor(){ this.L=LIGHT(); this.t=0; this.tent=0; this.N=12; this.rec={good:0,total:0,lamps:0}; this.newTent(); this.corLights=[]; this.puffs=[]; setTimeout(()=>cap('他们本是制造帐棚为业。','徒 18:3',7),400); }
+  constructor(){ this.L=LIGHT(); this.t=0; this.tent=0; this.N=16; this.TENTS=4; this.rec={good:0,total:0,lamps:0}; this.newTent(); this.corLights=[]; this.puffs=[]; setTimeout(()=>cap('他们本是制造帐棚为业。','徒 18:3',7),400); }
   newTent(){ this.night=this.tent>=1; const B=(this.L?1.0:.8)*(this.night?.88:1), win=(this.L?.24:.16)*(this.night?.78:1);
     this.B=B; this.win=win; this.tt=-1.5; this.marks=Array.from({length:this.N},()=>({s:0})); }
   layout(){}
   step(dt){ this.t+=dt; this.tt+=dt;
     this.marks.forEach((m,i)=>{ if(m.s===0&&this.tt>i*this.B+this.win){ m.s=-1; this.rec.total++; } });
-    if(this.tt>this.N*this.B+.6){ const good=this.marks.filter(m=>m.s===1).length; const n=Math.max(1,Math.round(good/4)); for(let q=0;q<n;q++) this.corLights.push({x:rand(.05,.5),y:rand(.0,.12),t:0}); this.rec.lamps+=n;
-      this.tent++; if(this.tent>=3){ if(!this.endT) this.endT=this.t; } else this.newTent(); }
+    if(!this.endT&&this.tt>this.N*this.B+.6){ const good=this.marks.filter(m=>m.s===1).length; const n=Math.max(1,Math.round(good/4)); for(let q=0;q<n;q++) this.corLights.push({x:rand(.05,.5),y:rand(.0,.12),t:0}); this.rec.lamps+=n;
+      this.tent++; if(this.tent>=this.TENTS){ if(!this.endT) this.endT=this.t; } else this.newTent(); }
     if(this.endT&&this.t-this.endT>3) sceneDone(this.rec); }
   draw(T,dt){
     const nt=this.night?0:.55; drawSky(nt,T); drawCorinth(nt);
     this.corLights.forEach(c=>{ c.t+=dt; smallLight(c.x*W,H-150-c.y*H,20*LS,Math.min(.6,c.t)); });
     // 北方的雾
-    const fw=W*.22, fh=H*.16; cx.fillStyle='rgba(115,118,128,.75)'; cx.beginPath(); cx.ellipse(W-fw*.6,fh*.7,fw*.6,fh*.6,0,0,7); cx.fill();
-    for(let k=0;k<4;k++) smallLight(W-fw*.9+k*fw*.18,fh*.7+Math.sin(k)*6,10*LS,.12+.08*Math.sin(T+k));
+    const fw=W*.22, fh=H*.16; cx.fillStyle='rgba(115,118,128,.75)'; cx.beginPath(); cx.ellipse(W-fw*.6-60,fh*.9,fw*.6,fh*.55,0,0,7); cx.fill();
+    for(let k=0;k<4;k++) smallLight(W-fw*.9-60+k*fw*.18,fh*.9+Math.sin(k)*6,10*LS,.12+.08*Math.sin(T+k));
     // 帐棚布
     const x0=W*.1, x1=W*.9, y=H*.5, sx=(x1-x0)/(this.N-1);
     cx.fillStyle='#6b5233'; cx.fillRect(x0-30,y-60*LS,x1-x0+60,120*LS); cx.fillStyle='#5a4329'; cx.fillRect(x0-30,y-4,x1-x0+60,8);
@@ -836,7 +836,7 @@ class Courier{
     b.strokeStyle='rgba(138,90,43,.25)'; b.lineWidth=this.L?14:8; b.lineCap='round'; b.lineJoin='round'; b.beginPath(); this.smp.forEach((q,i)=>i?b.lineTo(q[0],q[1]):b.moveTo(q[0],q[1])); b.stroke();
     b.strokeStyle='#8a5a2b'; b.lineWidth=2.5; b.setLineDash([7,6]); b.stroke(); b.setLineDash([]);
     this.labels=[]; b.font='bold 13px sans-serif'; Object.entries(PLC).forEach(([k,p])=>{ const [x,y]=this.scr(p.ll); b.fillStyle='#fff'; b.strokeStyle='#555'; b.lineWidth=1.2; b.beginPath(); b.arc(x,y,4,0,7); b.fill(); b.stroke();
-      b.lineWidth=3; b.strokeStyle='#fff'; b.fillStyle='#333'; b.strokeText(p.n,x+7,y-3); b.fillText(p.n,x+7,y-3); this.labels.push({k,x:x-6,y:y-18,w:b.measureText(p.n).width+20,h:26}); });
+      const left=k==='corinth'||k==='olympus', tw=b.measureText(p.n).width, tx=left?x-7-tw:x+7, ty=k==='corinth'?y+14:y-3; b.lineWidth=3; b.strokeStyle='#fff'; b.fillStyle='#333'; b.strokeText(p.n,tx,ty); b.fillText(p.n,tx,ty); this.labels.push({k,x:tx-8,y:ty-15,w:tw+16,h:24}); });
   }
   scr(ll){ const [x,y]=PP(ll); return [x*this.S+this.ox,y*this.S+this.oy]; }
   step(dt){ if(this.cardOpen) return; this.t+=dt; this.rec.sec+=dt;
@@ -964,7 +964,7 @@ function titleCard(t,cb){ SC=null; $('t-h').textContent=t[0]; $('t-v').textConte
 function sceneDone(extra){
   if(!SC||SC._done) return; SC._done=true;
   const sec=Math.round((performance.now()-scStart)/1000);
-  WORLD.rec.scenes.push(Object.assign({id:SCENES[scIdx].id,sec},extra||{}));
+  const ex={}; Object.entries(extra||{}).forEach(([k,v])=>{ ex[k==='sec'?'玩法秒数':k]=typeof v==='number'?Math.round(v*10)/10:v; }); WORLD.rec.scenes.push(Object.assign(ex,{id:SCENES[scIdx].id,sec}));
   $('skip').hidden=true;
   const n=scIdx+1;
   const stopHere=n>=SCENES.length||(onlyAct&&SCENES[n].act!==onlyAct&&!(onlyAct===3&&SCENES[n].act===4));
